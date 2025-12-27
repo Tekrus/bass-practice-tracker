@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if song else 'Add' }} Song - Bass Practice{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.songs') }}">Songs</a></li>
+                    <li class="breadcrumb-item active">{{ 'Edit' if song else 'Add' }} Song</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-music-note"></i> {{ 'Edit' if song else 'Add New' }} Song
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Song Title *</label>
+                                <input type="text" name="title" class="form-control" required
+                                       value="{{ song.title if song else '' }}"
+                                       placeholder="Enter song title">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Artist</label>
+                                <input type="text" name="artist" class="form-control"
+                                       value="{{ song.artist if song else '' }}"
+                                       placeholder="Artist name">
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label">Genre</label>
+                                <select name="genre" class="form-select">
+                                    <option value="">Select genre</option>
+                                    {% for g in ['rock', 'pop', 'funk', 'jazz', 'blues', 'metal', 'reggae', 'country', 'r&b', 'latin'] %}
+                                        <option value="{{ g }}" {% if song and song.genre == g %}selected{% endif %}>
+                                            {{ g|capitalize }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Difficulty (1-10)</label>
+                                <input type="number" name="difficulty_level" class="form-control"
+                                       min="1" max="10"
+                                       value="{{ song.difficulty_level if song else 5 }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tempo (BPM)</label>
+                                <input type="number" name="tempo_bpm" class="form-control"
+                                       min="40" max="240"
+                                       value="{{ song.tempo_bpm if song else '' }}"
+                                       placeholder="e.g., 120">
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label">Key Signature</label>
+                                <select name="key_signature" class="form-select">
+                                    <option value="">Select key</option>
+                                    {% for key in ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B'] %}
+                                        {% for quality in ['Major', 'Minor'] %}
+                                            <option value="{{ key }} {{ quality }}" 
+                                                    {% if song and song.key_signature == key + ' ' + quality %}selected{% endif %}>
+                                                {{ key }} {{ quality }}
+                                            </option>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">YouTube URL</label>
+                                <input type="url" name="youtube_url" class="form-control"
+                                       value="{{ song.youtube_url if song else '' }}"
+                                       placeholder="https://youtube.com/watch?v=...">
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label">Practice Notes</label>
+                                <textarea name="practice_notes" class="form-control" rows="4"
+                                          placeholder="Notes about tricky parts, technique tips, etc.">{{ song.practice_notes if song else '' }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> {{ 'Update' if song else 'Add' }} Song
+                            </button>
+                            <a href="{{ url_for('main.songs') }}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            {% if song %}
+                                <form action="{{ url_for('main.delete_song', song_id=song.id) }}" 
+                                      method="POST" class="ms-auto" 
+                                      onsubmit="return confirm('Delete this song?');">
+                                    <button type="submit" class="btn btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exercise.title }} - Bass Practice{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.exercises') }}">Exercises</a></li>
+            <li class="breadcrumb-item active">{{ exercise.title }}</li>
+        </ol>
+    </nav>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ exercise.title }}</h4>
+                    <div>
+                        <span class="badge bg-primary text-capitalize">{{ exercise.category }}</span>
+                        <span class="badge bg-secondary">Level {{ exercise.difficulty_level }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="lead">{{ exercise.description }}</p>
+                    
+                    {% if exercise.key_signature or exercise.tempo_bpm %}
+                    <div class="row mb-4">
+                        {% if exercise.key_signature %}
+                        <div class="col-auto">
+                            <span class="text-secondary">Key:</span>
+                            <strong>{{ exercise.key_signature }}</strong>
+                        </div>
+                        {% endif %}
+                        {% if exercise.tempo_bpm %}
+                        <div class="col-auto">
+                            <span class="text-secondary">Tempo:</span>
+                            <strong>{{ exercise.tempo_bpm }} BPM</strong>
+                        </div>
+                        {% endif %}
+                        <div class="col-auto">
+                            <span class="text-secondary">Duration:</span>
+                            <strong>{{ exercise.estimated_duration }} min</strong>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <h5><i class="bi bi-list-check"></i> Instructions</h5>
+                    <div class="bg-dark p-3 rounded mb-4">
+                        <pre class="mb-0 text-light" style="white-space: pre-wrap;">{{ exercise.instructions }}</pre>
+                    </div>
+                    
+                    {% if exercise.tab_notation %}
+                    <h5><i class="bi bi-music-note-list"></i> Tab</h5>
+                    <div class="bg-dark p-3 rounded mb-4">
+                        <pre class="mb-0 text-light" style="font-family: monospace;">{{ exercise.tab_notation }}</pre>
+                    </div>
+                    {% endif %}
+                    
+                    {% if exercise.tips %}
+                    <h5><i class="bi bi-lightbulb"></i> Tips</h5>
+                    <div class="alert alert-info">
+                        {{ exercise.tips }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- Metronome -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-stopwatch"></i> Metronome</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="metronome-bpm mb-3" id="bpmDisplay">{{ exercise.tempo_bpm or 80 }}</div>
+                    <div class="mb-3">
+                        <input type="range" class="form-range" id="tempoSlider" 
+                               min="40" max="200" value="{{ exercise.tempo_bpm or 80 }}">
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-secondary" onclick="adjustTempo(-5)">-5</button>
+                        <button class="btn btn-primary" id="metronomeBtn" onclick="toggleMetronome()">
+                            <i class="bi bi-play-fill"></i> Start
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="adjustTempo(5)">+5</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timer -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock"></i> Timer</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="display-4 mb-3" id="timerDisplay">{{ exercise.estimated_duration }}:00</div>
+                    <div class="btn-group">
+                        <button class="btn btn-success" onclick="startTimer()">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                        <button class="btn btn-warning" onclick="pauseTimer()">
+                            <i class="bi bi-pause-fill"></i>
+                        </button>
+                        <button class="btn btn-danger" onclick="resetTimer()">
+                            <i class="bi bi-stop-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Generate New -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-arrow-repeat"></i> Generate New</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-secondary small">Generate a new exercise in the same category</p>
+                    <a href="{{ url_for('main.exercises') }}?generate=1&category={{ exercise.category }}&difficulty={{ exercise.difficulty_level }}" 
+                       class="btn btn-outline-primary w-100">
+                        <i class="bi bi-shuffle"></i> New {{ exercise.category|title }} Exercise
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Timer
+    let timerSeconds = {{ exercise.estimated_duration }} * 60;
+    let timerInterval = null;
+    let timerRunning = false;
+    
+    function updateTimerDisplay() {
+        const minutes = Math.floor(timerSeconds / 60);
+        const seconds = timerSeconds % 60;
+        document.getElementById('timerDisplay').textContent = 
+            `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    function startTimer() {
+        if (!timerRunning && timerSeconds > 0) {
+            timerRunning = true;
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                updateTimerDisplay();
+                if (timerSeconds <= 0) {
+                    pauseTimer();
+                    alert('Time is up!');
+                }
+            }, 1000);
+        }
+    }
+    
+    function pauseTimer() {
+        timerRunning = false;
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+    }
+    
+    function resetTimer() {
+        pauseTimer();
+        timerSeconds = {{ exercise.estimated_duration }} * 60;
+        updateTimerDisplay();
+    }
+    
+    // Metronome
+    let metronomeInterval = null;
+    let metronomeRunning = false;
+    let audioContext = null;
+    
+    function initAudioContext() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioContext;
+    }
+    
+    function playClick() {
+        const ctx = initAudioContext();
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        oscillator.frequency.value = 1000;
+        oscillator.type = 'square';
+        
+        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+        
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.05);
+    }
+    
+    function toggleMetronome() {
+        const btn = document.getElementById('metronomeBtn');
+        
+        if (metronomeRunning) {
+            clearInterval(metronomeInterval);
+            metronomeInterval = null;
+            metronomeRunning = false;
+            btn.innerHTML = '<i class="bi bi-play-fill"></i> Start';
+        } else {
+            const bpm = parseInt(document.getElementById('tempoSlider').value);
+            const intervalMs = 60000 / bpm;
+            
+            metronomeRunning = true;
+            btn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
+            
+            playClick();
+            metronomeInterval = setInterval(playClick, intervalMs);
+        }
+    }
+    
+    function adjustTempo(delta) {
+        const slider = document.getElementById('tempoSlider');
+        let newValue = parseInt(slider.value) + delta;
+        newValue = Math.max(40, Math.min(200, newValue));
+        slider.value = newValue;
+        document.getElementById('bpmDisplay').textContent = newValue;
+        
+        // Restart metronome if running
+        if (metronomeRunning) {
+            toggleMetronome();
+            toggleMetronome();
+        }
+    }
+    
+    document.getElementById('tempoSlider').addEventListener('input', function() {
+        document.getElementById('bpmDisplay').textContent = this.value;
+    });
+    
+    document.getElementById('tempoSlider').addEventListener('change', function() {
+        if (metronomeRunning) {
+            toggleMetronome();
+            toggleMetronome();
+        }
+    });
+</script>
+{% endblock %}

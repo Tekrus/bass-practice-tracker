@@ -1,0 +1,743 @@
+{% extends "base.html" %}
+
+{% block title %}Practice Session - Bass Practice{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Session Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1">Practice Session</h1>
+                    <p class="text-secondary mb-0">
+                        {{ session.session_date.strftime('%B %d, %Y') }} | 
+                        {{ session.planned_duration }} minutes planned
+                    </p>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <div class="timer-display" id="sessionTimer">00:00</div>
+                    <button class="btn btn-outline-primary" id="timerToggle">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Progress Bar -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Session Progress</span>
+                        <span id="progressText">{{ session.completed_exercises }} / {{ session.total_exercises }} exercises</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        {% set progress_pct = (session.completed_exercises / session.total_exercises * 100) if session.total_exercises > 0 else 0 %}
+                        <div class="progress-bar bg-primary" id="progressBar" style="width: {{ progress_pct }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Exercise List -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-list-check"></i> Exercises</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="accordion" id="exerciseAccordion">
+                        {% for se in session_exercises %}
+                            {% set ex = se.exercise_data %}
+                            <div class="accordion-item bg-transparent border-0 border-bottom">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button {% if not loop.first %}collapsed{% endif %} bg-transparent text-light" 
+                                            type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#exercise{{ loop.index }}">
+                                        <span class="me-3">
+                                            {% if se.completed %}
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            {% else %}
+                                                <i class="bi bi-circle text-secondary"></i>
+                                            {% endif %}
+                                        </span>
+                                        <span class="flex-grow-1">
+                                            <strong>{{ ex.title if ex else 'Exercise' }}</strong>
+                                            <br>
+                                            <small class="text-secondary">
+                                                {% if ex %}
+                                                <span class="badge badge-category badge-{{ ex.category }}">
+                                                    {{ ex.category|capitalize }}
+                                                </span>
+                                                <span class="ms-2">{{ se.planned_duration }} min</span>
+                                                <span class="ms-2">Level {{ ex.difficulty_level }}</span>
+                                                {% if se.phase %}
+                                                <span class="ms-2 text-capitalize">({{ se.phase }})</span>
+                                                {% endif %}
+                                                {% endif %}
+                                            </small>
+                                        </span>
+                                    </button>
+                                </h2>
+                                <div id="exercise{{ loop.index }}" 
+                                     class="accordion-collapse collapse {% if loop.first %}show{% endif %}">
+                                    <div class="accordion-body">
+                                        {% if ex %}
+                                        <p>{{ ex.description }}</p>
+                                        
+                                        {% if ex.key_signature or ex.tempo_bpm %}
+                                        <div class="mb-3">
+                                            {% if ex.key_signature %}
+                                            <span class="badge bg-info me-2">Key: {{ ex.key_signature }}</span>
+                                            {% endif %}
+                                            {% if ex.tempo_bpm %}
+                                            <span class="badge bg-info">{{ ex.tempo_bpm }} BPM</span>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if ex.instructions %}
+                                            <h6>Instructions:</h6>
+                                            <pre class="bg-dark p-3 rounded" style="white-space: pre-wrap;">{{ ex.instructions }}</pre>
+                                        {% endif %}
+                                        
+                                        {% if ex.tab_notation %}
+                                            <h6>Tab:</h6>
+                                            <pre class="bg-dark p-3 rounded" style="font-family: monospace;">{{ ex.tab_notation }}</pre>
+                                        {% endif %}
+                                        
+                                        {% if ex.tips %}
+                                            <div class="alert alert-info">
+                                                <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> {{ ex.tips }}
+                                            </div>
+                                        {% endif %}
+                                        {% endif %}
+                                        
+                                        {% if not se.completed %}
+                                            <hr>
+                                            <form class="complete-exercise-form" 
+                                                  data-session-id="{{ session.id }}" 
+                                                  data-exercise-index="{{ se.order_index }}">
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Actual Duration (min)</label>
+                                                        <input type="number" class="form-control" name="actual_duration" 
+                                                               value="{{ se.planned_duration }}" min="1" max="60">
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Difficulty Felt (1-10)</label>
+                                                        <input type="number" class="form-control" name="difficulty_felt" 
+                                                               value="{{ ex.difficulty_level if ex else 5 }}" min="1" max="10">
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">&nbsp;</label>
+                                                        <button type="submit" class="btn btn-success w-100">
+                                                            <i class="bi bi-check-lg"></i> Mark Complete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <label class="form-label">Notes (optional)</label>
+                                                    <textarea class="form-control" name="notes" rows="2" 
+                                                              placeholder="Any observations or notes..."></textarea>
+                                                </div>
+                                            </form>
+                                        {% else %}
+                                            <div class="alert alert-success">
+                                                <i class="bi bi-check-circle-fill"></i> Completed!
+                                                {% if se.difficulty_felt %}
+                                                    Difficulty felt: {{ se.difficulty_felt }}/10
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Complete Session Button -->
+            {% if not session.is_completed %}
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h5>Complete Session</h5>
+                        <form action="{{ url_for('main.complete_session', session_id=session.id) }}" method="POST">
+                            <input type="hidden" name="actual_duration" id="actualDurationInput" value="{{ session.planned_duration }}">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Rate this session (1-5 stars)</label>
+                                    <div class="btn-group" role="group">
+                                        {% for i in range(1, 6) %}
+                                            <input type="radio" class="btn-check" name="rating" id="rating{{ i }}" value="{{ i }}" {% if i == 3 %}checked{% endif %}>
+                                            <label class="btn btn-outline-warning" for="rating{{ i }}">
+                                                <i class="bi bi-star-fill"></i> {{ i }}
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Session Notes</label>
+                                    <textarea class="form-control" name="notes" rows="2" 
+                                              placeholder="How was your practice today?"></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg mt-3">
+                                <i class="bi bi-flag-fill"></i> Complete Session
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Metronome & Tools -->
+        <div class="col-lg-4 mb-4">
+            <!-- Metronome -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-stopwatch"></i> Metronome</h5>
+                    <span class="badge bg-info" id="autoSpeedBadge" style="display: none;">Auto +<span id="autoSpeedAmount">5</span> BPM</span>
+                </div>
+                <div class="card-body text-center">
+                    <div class="metronome-bpm" id="bpmDisplay">120</div>
+                    <div class="text-secondary mb-2">BPM</div>
+                    <div class="text-secondary small mb-2" id="targetBpmDisplay" style="display: none;">
+                        Target: <span id="targetBpmValue">160</span> BPM
+                    </div>
+                    
+                    <input type="range" class="form-range" id="bpmSlider" min="40" max="240" value="120">
+                    
+                    <div class="d-flex justify-content-center gap-2 my-3">
+                        <button class="btn btn-outline-secondary" id="bpmMinus">-5</button>
+                        <button class="btn btn-primary btn-lg" id="metronomeToggle">
+                            <i class="bi bi-play-fill" id="metronomeIcon"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" id="bpmPlus">+5</button>
+                    </div>
+                    
+                    <div id="beatIndicator" class="d-flex justify-content-center gap-2 mt-3">
+                        <span class="beat-dot rounded-circle bg-secondary" style="width: 20px; height: 20px;"></span>
+                        <span class="beat-dot rounded-circle bg-secondary" style="width: 20px; height: 20px;"></span>
+                        <span class="beat-dot rounded-circle bg-secondary" style="width: 20px; height: 20px;"></span>
+                        <span class="beat-dot rounded-circle bg-secondary" style="width: 20px; height: 20px;"></span>
+                    </div>
+                    
+                    <!-- Auto Speed Up Section -->
+                    <hr class="my-3">
+                    <div class="text-start">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="autoSpeedToggle">
+                            <label class="form-check-label" for="autoSpeedToggle">
+                                Auto Speed Up
+                            </label>
+                        </div>
+                        <div id="autoSpeedSettings" style="display: none;">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small">Increase by</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control" id="speedIncrement" value="5" min="1" max="20">
+                                        <span class="input-group-text">BPM</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Every</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control" id="speedInterval" value="4" min="1" max="16">
+                                        <span class="input-group-text">bars</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small">Start BPM</label>
+                                    <input type="number" class="form-control form-control-sm" id="startBpm" value="80" min="40" max="200">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Target BPM</label>
+                                    <input type="number" class="form-control form-control-sm" id="targetBpm" value="120" min="60" max="240">
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-success btn-sm" id="startAutoSpeed">
+                                    <i class="bi bi-lightning"></i> Start Speed Training
+                                </button>
+                            </div>
+                            <div id="autoSpeedProgress" class="mt-2" style="display: none;">
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-success" id="speedProgressBar" style="width: 0%"></div>
+                                </div>
+                                <small class="text-secondary">
+                                    Bar <span id="currentBar">0</span> | 
+                                    Next increase in <span id="barsUntilIncrease">4</span> bars
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Exercise Timer -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock"></i> Exercise Timer</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="timer-display" id="exerciseTimer">05:00</div>
+                    <div class="d-flex justify-content-center gap-2 mt-3">
+                        <button class="btn btn-outline-secondary" onclick="setExerciseTimer(3)">3 min</button>
+                        <button class="btn btn-outline-secondary" onclick="setExerciseTimer(5)">5 min</button>
+                        <button class="btn btn-outline-secondary" onclick="setExerciseTimer(10)">10 min</button>
+                    </div>
+                    <div class="d-flex justify-content-center gap-2 mt-3">
+                        <button class="btn btn-success" id="exerciseTimerStart">
+                            <i class="bi bi-play-fill"></i> Start
+                        </button>
+                        <button class="btn btn-warning" id="exerciseTimerReset">
+                            <i class="bi bi-arrow-clockwise"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Links -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-link-45deg"></i> Quick Links</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('main.exercises') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-collection"></i> Browse Exercises
+                        </a>
+                        <a href="{{ url_for('main.chord_progressions') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-diagram-3"></i> Chord Progressions
+                        </a>
+                        <a href="{{ url_for('main.ear_training') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-ear"></i> Ear Training
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Session Timer
+    let sessionSeconds = 0;
+    let sessionRunning = false;
+    let sessionInterval;
+    
+    document.getElementById('timerToggle').addEventListener('click', function() {
+        sessionRunning = !sessionRunning;
+        this.innerHTML = sessionRunning ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill"></i>';
+        
+        if (sessionRunning) {
+            sessionInterval = setInterval(updateSessionTimer, 1000);
+        } else {
+            clearInterval(sessionInterval);
+        }
+    });
+    
+    function updateSessionTimer() {
+        sessionSeconds++;
+        const mins = Math.floor(sessionSeconds / 60);
+        const secs = sessionSeconds % 60;
+        document.getElementById('sessionTimer').textContent = 
+            String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+        document.getElementById('actualDurationInput').value = Math.ceil(sessionSeconds / 60);
+    }
+    
+    // Exercise Timer
+    let exerciseSeconds = 300;
+    let exerciseRunning = false;
+    let exerciseInterval;
+    
+    function updateExerciseTimerDisplay() {
+        const mins = Math.floor(exerciseSeconds / 60);
+        const secs = exerciseSeconds % 60;
+        document.getElementById('exerciseTimer').textContent = 
+            String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+    }
+    
+    function setExerciseTimer(minutes) {
+        exerciseSeconds = minutes * 60;
+        updateExerciseTimerDisplay();
+        if (exerciseRunning) {
+            clearInterval(exerciseInterval);
+            exerciseRunning = false;
+            document.getElementById('exerciseTimerStart').innerHTML = '<i class="bi bi-play-fill"></i> Start';
+        }
+    }
+    
+    document.getElementById('exerciseTimerStart').addEventListener('click', function() {
+        exerciseRunning = !exerciseRunning;
+        this.innerHTML = exerciseRunning ? '<i class="bi bi-pause-fill"></i> Pause' : '<i class="bi bi-play-fill"></i> Start';
+        
+        if (exerciseRunning) {
+            exerciseInterval = setInterval(function() {
+                exerciseSeconds--;
+                updateExerciseTimerDisplay();
+                if (exerciseSeconds <= 0) {
+                    clearInterval(exerciseInterval);
+                    exerciseRunning = false;
+                    document.getElementById('exerciseTimerStart').innerHTML = '<i class="bi bi-play-fill"></i> Start';
+                    // Play notification sound
+                    new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU').play().catch(() => {});
+                    alert('Timer complete!');
+                }
+            }, 1000);
+        } else {
+            clearInterval(exerciseInterval);
+        }
+    });
+    
+    document.getElementById('exerciseTimerReset').addEventListener('click', function() {
+        setExerciseTimer(5);
+    });
+    
+    // Metronome
+    let bpm = 120;
+    let metronomeRunning = false;
+    let metronomeInterval;
+    let beatIndex = 0;
+    let audioContext;
+    
+    function playClick(isAccent) {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = isAccent ? 1000 : 800;
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+    }
+    
+    function updateBeatIndicator() {
+        const dots = document.querySelectorAll('.beat-dot');
+        dots.forEach((dot, i) => {
+            dot.classList.remove('bg-primary');
+            dot.classList.add('bg-secondary');
+        });
+        dots[beatIndex].classList.remove('bg-secondary');
+        dots[beatIndex].classList.add('bg-primary');
+    }
+    
+    document.getElementById('metronomeToggle').addEventListener('click', function() {
+        metronomeRunning = !metronomeRunning;
+        document.getElementById('metronomeIcon').className = metronomeRunning ? 'bi bi-pause-fill' : 'bi bi-play-fill';
+        
+        if (metronomeRunning) {
+            const interval = 60000 / bpm;
+            metronomeInterval = setInterval(function() {
+                playClick(beatIndex === 0);
+                updateBeatIndicator();
+                beatIndex = (beatIndex + 1) % 4;
+            }, interval);
+        } else {
+            clearInterval(metronomeInterval);
+        }
+    });
+    
+    function updateBPM(newBPM) {
+        bpm = Math.max(40, Math.min(240, newBPM));
+        document.getElementById('bpmDisplay').textContent = bpm;
+        document.getElementById('bpmSlider').value = bpm;
+        
+        if (metronomeRunning) {
+            clearInterval(metronomeInterval);
+            const interval = 60000 / bpm;
+            metronomeInterval = setInterval(function() {
+                playClick(beatIndex === 0);
+                updateBeatIndicator();
+                beatIndex = (beatIndex + 1) % 4;
+            }, interval);
+        }
+    }
+    
+    document.getElementById('bpmSlider').addEventListener('input', function() {
+        updateBPM(parseInt(this.value));
+    });
+    
+    document.getElementById('bpmMinus').addEventListener('click', function() {
+        updateBPM(bpm - 5);
+    });
+    
+    document.getElementById('bpmPlus').addEventListener('click', function() {
+        updateBPM(bpm + 5);
+    });
+    
+    // Auto Speed-Up Metronome
+    let autoSpeedEnabled = false;
+    let autoSpeedRunning = false;
+    let currentBar = 0;
+    let currentBeat = 0;
+    let startBpmValue = 80;
+    let targetBpmValue = 120;
+    let speedIncrement = 5;
+    let speedIntervalBars = 4;
+    
+    // Toggle auto speed settings visibility
+    document.getElementById('autoSpeedToggle').addEventListener('change', function() {
+        autoSpeedEnabled = this.checked;
+        document.getElementById('autoSpeedSettings').style.display = this.checked ? 'block' : 'none';
+        
+        if (!this.checked && autoSpeedRunning) {
+            stopAutoSpeed();
+        }
+    });
+    
+    // Start auto speed training
+    document.getElementById('startAutoSpeed').addEventListener('click', function() {
+        if (autoSpeedRunning) {
+            stopAutoSpeed();
+        } else {
+            startAutoSpeed();
+        }
+    });
+    
+    function startAutoSpeed() {
+        // Get values from inputs
+        speedIncrement = parseInt(document.getElementById('speedIncrement').value) || 5;
+        speedIntervalBars = parseInt(document.getElementById('speedInterval').value) || 4;
+        startBpmValue = parseInt(document.getElementById('startBpm').value) || 80;
+        targetBpmValue = parseInt(document.getElementById('targetBpm').value) || 120;
+        
+        // Validate
+        if (startBpmValue >= targetBpmValue) {
+            alert('Start BPM must be less than Target BPM');
+            return;
+        }
+        
+        // Reset counters
+        currentBar = 0;
+        currentBeat = 0;
+        beatIndex = 0;
+        
+        // Set starting BPM
+        updateBPM(startBpmValue);
+        
+        // Update UI
+        autoSpeedRunning = true;
+        document.getElementById('startAutoSpeed').innerHTML = '<i class="bi bi-stop-fill"></i> Stop Speed Training';
+        document.getElementById('startAutoSpeed').classList.remove('btn-outline-success');
+        document.getElementById('startAutoSpeed').classList.add('btn-danger');
+        document.getElementById('autoSpeedProgress').style.display = 'block';
+        document.getElementById('autoSpeedBadge').style.display = 'inline';
+        document.getElementById('autoSpeedAmount').textContent = speedIncrement;
+        document.getElementById('targetBpmDisplay').style.display = 'block';
+        document.getElementById('targetBpmValue').textContent = targetBpmValue;
+        
+        // Disable manual BPM controls during auto speed
+        document.getElementById('bpmSlider').disabled = true;
+        document.getElementById('bpmMinus').disabled = true;
+        document.getElementById('bpmPlus').disabled = true;
+        document.getElementById('speedIncrement').disabled = true;
+        document.getElementById('speedInterval').disabled = true;
+        document.getElementById('startBpm').disabled = true;
+        document.getElementById('targetBpm').disabled = true;
+        
+        updateAutoSpeedDisplay();
+        
+        // Start metronome if not running
+        if (!metronomeRunning) {
+            document.getElementById('metronomeToggle').click();
+        }
+        
+        // Override metronome interval with auto-speed tracking
+        clearInterval(metronomeInterval);
+        startAutoSpeedMetronome();
+    }
+    
+    function startAutoSpeedMetronome() {
+        const interval = 60000 / bpm;
+        metronomeInterval = setInterval(function() {
+            playClick(beatIndex === 0);
+            updateBeatIndicator();
+            
+            // Track beats and bars
+            currentBeat++;
+            if (currentBeat >= 4) {
+                currentBeat = 0;
+                currentBar++;
+                
+                // Check if we should increase BPM
+                if (currentBar % speedIntervalBars === 0 && currentBar > 0) {
+                    const newBpm = bpm + speedIncrement;
+                    
+                    if (newBpm >= targetBpmValue) {
+                        // Reached target!
+                        updateBPM(targetBpmValue);
+                        flashSpeedIncrease();
+                        setTimeout(function() {
+                            stopAutoSpeed();
+                            showTargetReached();
+                        }, 500);
+                    } else {
+                        updateBPM(newBpm);
+                        flashSpeedIncrease();
+                        // Restart metronome with new BPM
+                        clearInterval(metronomeInterval);
+                        startAutoSpeedMetronome();
+                    }
+                }
+                
+                updateAutoSpeedDisplay();
+            }
+            
+            beatIndex = (beatIndex + 1) % 4;
+        }, interval);
+    }
+    
+    function stopAutoSpeed() {
+        autoSpeedRunning = false;
+        
+        // Update UI
+        document.getElementById('startAutoSpeed').innerHTML = '<i class="bi bi-lightning"></i> Start Speed Training';
+        document.getElementById('startAutoSpeed').classList.remove('btn-danger');
+        document.getElementById('startAutoSpeed').classList.add('btn-outline-success');
+        document.getElementById('autoSpeedBadge').style.display = 'none';
+        document.getElementById('targetBpmDisplay').style.display = 'none';
+        
+        // Re-enable manual controls
+        document.getElementById('bpmSlider').disabled = false;
+        document.getElementById('bpmMinus').disabled = false;
+        document.getElementById('bpmPlus').disabled = false;
+        document.getElementById('speedIncrement').disabled = false;
+        document.getElementById('speedInterval').disabled = false;
+        document.getElementById('startBpm').disabled = false;
+        document.getElementById('targetBpm').disabled = false;
+        
+        // Stop metronome
+        if (metronomeRunning) {
+            document.getElementById('metronomeToggle').click();
+        }
+    }
+    
+    function updateAutoSpeedDisplay() {
+        const barsUntilNext = speedIntervalBars - (currentBar % speedIntervalBars);
+        document.getElementById('currentBar').textContent = currentBar;
+        document.getElementById('barsUntilIncrease').textContent = barsUntilNext;
+        
+        // Calculate progress percentage
+        const totalBpmRange = targetBpmValue - startBpmValue;
+        const currentProgress = bpm - startBpmValue;
+        const progressPct = Math.min(100, (currentProgress / totalBpmRange) * 100);
+        document.getElementById('speedProgressBar').style.width = progressPct + '%';
+    }
+    
+    function flashSpeedIncrease() {
+        // Visual feedback when speed increases
+        const bpmDisplay = document.getElementById('bpmDisplay');
+        bpmDisplay.style.color = '#00ff00';
+        bpmDisplay.style.transform = 'scale(1.2)';
+        bpmDisplay.style.transition = 'all 0.2s ease';
+        
+        setTimeout(function() {
+            bpmDisplay.style.color = '';
+            bpmDisplay.style.transform = '';
+        }, 300);
+        
+        // Play a higher pitched "speed up" sound
+        if (audioContext) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 1200;
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.15);
+        }
+    }
+    
+    function showTargetReached() {
+        // Show completion message
+        const progressContainer = document.getElementById('autoSpeedProgress');
+        progressContainer.innerHTML = `
+            <div class="alert alert-success py-2 mb-0 mt-2">
+                <i class="bi bi-trophy-fill"></i> Target reached! ${targetBpmValue} BPM
+            </div>
+        `;
+        
+        // Play celebration sound
+        if (audioContext) {
+            const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+            notes.forEach((freq, i) => {
+                setTimeout(() => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sine';
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                }, i * 150);
+            });
+        }
+        
+        // Reset progress display after a few seconds
+        setTimeout(function() {
+            document.getElementById('autoSpeedProgress').innerHTML = `
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar bg-success" id="speedProgressBar" style="width: 0%"></div>
+                </div>
+                <small class="text-secondary">
+                    Bar <span id="currentBar">0</span> | 
+                    Next increase in <span id="barsUntilIncrease">${speedIntervalBars}</span> bars
+                </small>
+            `;
+            document.getElementById('autoSpeedProgress').style.display = 'none';
+        }, 5000);
+    }
+    
+    // Complete Exercise Forms
+    document.querySelectorAll('.complete-exercise-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const sessionId = this.dataset.sessionId;
+            const exerciseIndex = this.dataset.exerciseIndex;
+            const formData = new FormData(this);
+            
+            fetch(`/practice/${sessionId}/exercise/${exerciseIndex}/complete`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

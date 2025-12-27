@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block title %}Ear Training - Bass Practice{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1><i class="bi bi-ear"></i> Ear Training</h1>
+            <p class="text-secondary">Develop your musical ear with interval and chord recognition exercises</p>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <!-- Stats -->
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="stat-value">{{ total_attempts }}</div>
+                <div class="stat-label">Total Attempts</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="stat-value">{{ "%.1f"|format(accuracy) }}%</div>
+                <div class="stat-label">Overall Accuracy</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="stat-value" id="currentLevel">1</div>
+                <div class="stat-label">Current Level</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Exercise Panel -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-music-note-beamed"></i> Exercise</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary exercise-type-btn {% if exercise_type == 'interval' %}active{% endif %}" 
+                                data-type="interval">Intervals</button>
+                        <button class="btn btn-outline-primary exercise-type-btn {% if exercise_type == 'chord' %}active{% endif %}" 
+                                data-type="chord">Chords</button>
+                        <button class="btn btn-outline-primary exercise-type-btn {% if exercise_type == 'melody' %}active{% endif %}" 
+                                data-type="melody">Melodies</button>
+                    </div>
+                </div>
+                <div class="card-body text-center py-5">
+                    <div id="exerciseArea">
+                        <h3 id="exerciseTitle">Click "New Exercise" to start</h3>
+                        <p class="text-secondary" id="exerciseDescription">
+                            Select an exercise type and difficulty level
+                        </p>
+                        
+                        <button class="btn btn-primary btn-lg my-4" id="playSound">
+                            <i class="bi bi-play-fill"></i> Play Sound
+                        </button>
+                        
+                        <div id="optionsArea" class="d-none">
+                            <h5>What interval/chord is this?</h5>
+                            <div class="d-flex flex-wrap justify-content-center gap-2 mt-3" id="answerOptions">
+                                <!-- Options will be populated dynamically -->
+                            </div>
+                        </div>
+                        
+                        <div id="resultArea" class="d-none mt-4">
+                            <div class="alert" id="resultMessage"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-secondary">
+                            <small>Difficulty adjusts automatically based on your performance</small>
+                        </div>
+                        <button class="btn btn-success" id="newExerciseBtn">
+                            <i class="bi bi-arrow-clockwise"></i> New Exercise
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Info Panel -->
+        <div class="col-lg-4 mb-4">
+            <!-- Interval Reference -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-book"></i> Interval Reference</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-dark table-sm">
+                        <thead>
+                            <tr>
+                                <th>Interval</th>
+                                <th>Frets</th>
+                                <th>Song Reference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>m2</td><td>1</td><td>Jaws</td></tr>
+                            <tr><td>M2</td><td>2</td><td>Happy Birthday</td></tr>
+                            <tr><td>m3</td><td>3</td><td>Greensleeves</td></tr>
+                            <tr><td>M3</td><td>4</td><td>Oh When the Saints</td></tr>
+                            <tr><td>P4</td><td>5</td><td>Here Comes the Bride</td></tr>
+                            <tr><td>Tritone</td><td>6</td><td>The Simpsons</td></tr>
+                            <tr><td>P5</td><td>7</td><td>Star Wars</td></tr>
+                            <tr><td>m6</td><td>8</td><td>The Entertainer</td></tr>
+                            <tr><td>M6</td><td>9</td><td>NBC Theme</td></tr>
+                            <tr><td>m7</td><td>10</td><td>Somewhere (WSS)</td></tr>
+                            <tr><td>M7</td><td>11</td><td>Take On Me</td></tr>
+                            <tr><td>P8</td><td>12</td><td>Somewhere Over Rainbow</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Recent Results -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Results</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_results %}
+                        <ul class="list-group list-group-flush">
+                            {% for result in recent_results %}
+                                <li class="list-group-item bg-transparent d-flex justify-content-between">
+                                    <span>{{ result.exercise.title }}</span>
+                                    <span class="badge {% if result.correct %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ 'Correct' if result.correct else 'Wrong' }}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-center text-secondary py-3 mb-0">No results yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentExercise = null;
+    let exerciseType = '{{ exercise_type }}';
+    let audioContext = null;
+    let startTime = null;
+    
+    // Interval semitones mapping
+    const intervals = {
+        'm2': 1, 'M2': 2, 'm3': 3, 'M3': 4, 'P4': 5, 
+        'tritone': 6, 'P5': 7, 'm6': 8, 'M6': 9, 'm7': 10, 'M7': 11, 'P8': 12
+    };
+    
+    // Chord type to semitones mapping
+    const chordTypes = {
+        'major': [0, 4, 7],
+        'minor': [0, 3, 7],
+        'diminished': [0, 3, 6],
+        'augmented': [0, 4, 8],
+        'major7': [0, 4, 7, 11],
+        'minor7': [0, 3, 7, 10],
+        'dominant7': [0, 4, 7, 10],
+        'diminished7': [0, 3, 6, 9]
+    };
+    
+    // Scale degree to semitones (for melody exercises)
+    const scaleDegrees = {
+        '1': 0, '2': 2, '3': 4, '4': 5, '5': 7, '6': 9, '7': 11, '8': 12,
+        'b2': 1, 'b3': 3, 'b5': 6, 'b6': 8, 'b7': 10,
+        '#4': 6, '#5': 8
+    };
+    
+    function initAudioContext() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        // Resume if suspended (required for some browsers)
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        return audioContext;
+    }
+    
+    function playNote(frequency, duration = 0.5, delay = 0) {
+        // Validate frequency
+        if (!frequency || !isFinite(frequency) || frequency <= 0) {
+            console.error('Invalid frequency:', frequency);
+            return;
+        }
+        
+        const ctx = initAudioContext();
+        const startAt = ctx.currentTime + delay;
+        
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, startAt);
+        
+        // Envelope
+        gainNode.gain.setValueAtTime(0, startAt);
+        gainNode.gain.linearRampToValueAtTime(0.4, startAt + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startAt + duration);
+        
+        oscillator.start(startAt);
+        oscillator.stop(startAt + duration + 0.1);
+    }
+    
+    function frequencyFromSemitones(rootFreq, semitones) {
+        return rootFreq * Math.pow(2, semitones / 12);
+    }
+    
+    function playInterval(rootFreq, semitones) {
+        if (semitones === undefined || semitones === null) {
+            console.error('Invalid semitones for interval:', semitones);
+            return;
+        }
+        
+        const secondFreq = frequencyFromSemitones(rootFreq, semitones);
+        
+        // Play root note
+        playNote(rootFreq, 0.6, 0);
+        // Play second note after a delay
+        playNote(secondFreq, 0.6, 0.7);
+    }
+    
+    function playChord(rootFreq, chordType) {
+        const semitones = chordTypes[chordType];
+        
+        if (!semitones) {
+            console.error('Unknown chord type:', chordType);
+            return;
+        }
+        
+        // Play all notes of the chord simultaneously with slight staggering
+        semitones.forEach((s, i) => {
+            const freq = frequencyFromSemitones(rootFreq, s);
+            playNote(freq, 1.2, i * 0.05);
+        });
+    }
+    
+    function playChordFromSemitones(rootFreq, semitones) {
+        // Play chord from array of semitones
+        if (!Array.isArray(semitones)) {
+            console.error('Invalid semitones array:', semitones);
+            return;
+        }
+        
+        semitones.forEach((s, i) => {
+            const freq = frequencyFromSemitones(rootFreq, s);
+            playNote(freq, 1.2, i * 0.05);
+        });
+    }
+    
+    function playMelody(rootFreq, melodyPattern) {
+        // Parse melody pattern like "1-3-5-3" or "1-b3-5-b7"
+        let pattern = melodyPattern;
+        
+        // Handle if it's a string
+        if (typeof pattern === 'string') {
+            pattern = pattern.split('-').map(p => p.trim());
+        }
+        
+        if (!Array.isArray(pattern)) {
+            console.error('Invalid melody pattern:', melodyPattern);
+            return;
+        }
+        
+        pattern.forEach((degree, i) => {
+            const semitones = scaleDegrees[degree];
+            if (semitones !== undefined) {
+                const freq = frequencyFromSemitones(rootFreq, semitones);
+                playNote(freq, 0.4, i * 0.5);
+            } else {
+                console.warn('Unknown scale degree:', degree);
+            }
+        });
+    }
+    
+    function playMelodyFromSemitones(rootFreq, semitones) {
+        // Play melody from array of semitones
+        if (!Array.isArray(semitones)) {
+            console.error('Invalid semitones array:', semitones);
+            return;
+        }
+        
+        semitones.forEach((s, i) => {
+            const freq = frequencyFromSemitones(rootFreq, s);
+            playNote(freq, 0.4, i * 0.5);
+        });
+    }
+    
+    document.getElementById('playSound').addEventListener('click', function() {
+        if (!currentExercise) {
+            alert('Please load an exercise first by clicking "New Exercise"');
+            return;
+        }
+        
+        startTime = Date.now();
+        
+        // Fetch audio data from server (doesn't reveal the answer)
+        fetch(`/ear-training/play/${currentExercise.id}`)
+            .then(response => response.json())
+            .then(audioData => {
+                if (audioData.error) {
+                    alert('Cannot play audio for this exercise');
+                    return;
+                }
+                
+                // Use C3 as root frequency (good bass range)
+                const rootFreq = 130.81;
+                
+                if (audioData.type === 'interval') {
+                    playInterval(rootFreq, audioData.semitones);
+                } else if (audioData.type === 'chord') {
+                    playChordFromSemitones(rootFreq, audioData.semitones);
+                } else if (audioData.type === 'melody') {
+                    playMelodyFromSemitones(rootFreq, audioData.semitones);
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching audio data:', err);
+                alert('Error playing audio');
+            });
+    });
+    
+    document.getElementById('newExerciseBtn').addEventListener('click', loadNewExercise);
+    
+    document.querySelectorAll('.exercise-type-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.exercise-type-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            exerciseType = this.dataset.type;
+            loadNewExercise();
+        });
+    });
+    
+    function loadNewExercise() {
+        fetch(`/ear-training/exercise?type=${exerciseType}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('exerciseTitle').textContent = 'No exercises available';
+                    document.getElementById('exerciseDescription').textContent = 'Try selecting a different exercise type.';
+                    document.getElementById('optionsArea').classList.add('d-none');
+                    currentExercise = null;
+                    return;
+                }
+                
+                currentExercise = data;
+                
+                // Update the current level display
+                if (data.difficulty) {
+                    document.getElementById('currentLevel').textContent = data.difficulty;
+                }
+                
+                // Show generic title/description to avoid revealing the answer
+                const typeLabels = {
+                    'interval': 'Identify the Interval',
+                    'chord': 'Identify the Chord',
+                    'melody': 'Identify the Melody'
+                };
+                document.getElementById('exerciseTitle').textContent = typeLabels[data.type] || 'Listen and Identify';
+                document.getElementById('exerciseDescription').textContent = 'Click "Play Sound" and listen carefully, then select your answer.';
+                
+                // Parse options
+                let options;
+                try {
+                    options = typeof data.options === 'string' ? JSON.parse(data.options) : data.options;
+                } catch(e) {
+                    console.error('Error parsing options:', e);
+                    options = [];
+                }
+                
+                // Ensure options is an array
+                if (!Array.isArray(options)) {
+                    options = [options];
+                }
+                
+                // Create option buttons
+                const optionsArea = document.getElementById('answerOptions');
+                optionsArea.innerHTML = '';
+                
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-outline-primary btn-lg m-1';
+                    btn.textContent = opt;
+                    btn.onclick = () => submitAnswer(opt);
+                    optionsArea.appendChild(btn);
+                });
+                
+                document.getElementById('optionsArea').classList.remove('d-none');
+                document.getElementById('resultArea').classList.add('d-none');
+            })
+            .catch(err => {
+                console.error('Error loading exercise:', err);
+                document.getElementById('exerciseTitle').textContent = 'Error loading exercise';
+                document.getElementById('exerciseDescription').textContent = 'Please try again.';
+            });
+    }
+    
+    function submitAnswer(answer) {
+        if (!currentExercise) return;
+        
+        const responseTime = startTime ? Date.now() - startTime : 0;
+        
+        fetch('/ear-training/submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                exercise_id: currentExercise.id,
+                answer: answer,
+                response_time: responseTime
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const resultArea = document.getElementById('resultArea');
+            const resultMessage = document.getElementById('resultMessage');
+            
+            resultArea.classList.remove('d-none');
+            
+            // Show hint after answering (educational feedback)
+            const hint = currentExercise.hints ? `<br><small class="text-muted">Hint: ${currentExercise.hints}</small>` : '';
+            
+            if (data.correct) {
+                resultMessage.className = 'alert alert-success';
+                resultMessage.innerHTML = `<i class="bi bi-check-circle-fill"></i> Correct! It was <strong>${data.correct_answer}</strong>${hint}`;
+            } else {
+                resultMessage.className = 'alert alert-danger';
+                resultMessage.innerHTML = `<i class="bi bi-x-circle-fill"></i> Incorrect. The answer was: <strong>${data.correct_answer}</strong>${hint}`;
+            }
+            
+            // Auto-load next exercise after 3 seconds (more time to read hint)
+            setTimeout(loadNewExercise, 3000);
+        })
+        .catch(err => {
+            console.error('Error submitting answer:', err);
+        });
+    }
+    
+    // Load initial exercise when page loads
+    loadNewExercise();
+</script>
+{% endblock %}
