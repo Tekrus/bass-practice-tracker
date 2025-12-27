@@ -86,32 +86,3 @@ def update_song_mastery(song, practice_quality):
     db.session.commit()
     
     return song
-
-
-def get_song_statistics():
-    """Get overall song practice statistics."""
-    all_songs = Song.query.all()
-    
-    if not all_songs:
-        return {
-            'total_songs': 0,
-            'mastered_songs': 0,
-            'learning_songs': 0,
-            'new_songs': 0,
-            'mastery_percentage': 0,
-            'total_practice_count': 0
-        }
-    
-    mastered = len([s for s in all_songs if s.mastery_level >= 4])
-    learning = len([s for s in all_songs if 2 <= s.mastery_level <= 3])
-    new = len([s for s in all_songs if s.mastery_level <= 1])
-    total_practice = sum(s.practice_count for s in all_songs)
-    
-    return {
-        'total_songs': len(all_songs),
-        'mastered_songs': mastered,
-        'learning_songs': learning,
-        'new_songs': new,
-        'mastery_percentage': (mastered / len(all_songs)) * 100 if all_songs else 0,
-        'total_practice_count': total_practice
-    }

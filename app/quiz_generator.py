@@ -12,15 +12,6 @@ import json
 NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 NOTES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
 
-# Enharmonic equivalents
-ENHARMONIC = {
-    'C#': 'Db', 'Db': 'C#',
-    'D#': 'Eb', 'Eb': 'D#',
-    'F#': 'Gb', 'Gb': 'F#',
-    'G#': 'Ab', 'Ab': 'G#',
-    'A#': 'Bb', 'Bb': 'A#',
-}
-
 # Bass string open notes (string number -> note index in NOTES)
 BASS_STRINGS = {
     1: 7,   # G string - index 7

@@ -4,7 +4,7 @@ Practice session generation logic using dynamic exercise generation.
 import random
 from datetime import date
 from .models import db, PracticeSession, SessionExercise, Progress, DynamicExercise
-from .exercise_generator import generate_exercise, generate_practice_session as gen_exercises, EXERCISE_CATEGORIES
+from .exercise_generator import generate_exercise, EXERCISE_CATEGORIES
 
 
 def calculate_session_structure(duration):
@@ -57,7 +57,6 @@ def generate_practice_session(skill_level, duration_minutes, preferred_genre=Non
     db.session.add(session)
     db.session.flush()  # Get session ID
     
-    exercises_added = []
     order_index = 0
     
     # Get weak categories for focus
@@ -117,7 +116,6 @@ def generate_practice_session(skill_level, duration_minutes, preferred_genre=Non
             )
             db.session.add(session_exercise)
             
-            exercises_added.append((phase_name, dynamic_exercise))
             order_index += 1
             remaining_time -= exercise_time
     
@@ -127,28 +125,3 @@ def generate_practice_session(skill_level, duration_minutes, preferred_genre=Non
     db.session.commit()
     
     return session
-
-
-def generate_single_exercise(category=None, difficulty=1):
-    """Generate a single dynamic exercise for standalone practice."""
-    exercise_data = generate_exercise(category, difficulty)
-    
-    # Create a DynamicExercise record
-    dynamic_exercise = DynamicExercise(
-        title=exercise_data['title'],
-        category=exercise_data['category'],
-        subcategory=exercise_data.get('subcategory', ''),
-        difficulty_level=exercise_data.get('difficulty', difficulty),
-        estimated_duration=exercise_data.get('duration', 5),
-        instructions=exercise_data.get('instructions', ''),
-        tips=exercise_data.get('tips', ''),
-        description=exercise_data.get('description', ''),
-        key_signature=exercise_data.get('key', ''),
-        tempo_bpm=exercise_data.get('tempo', 80),
-        tab_notation=exercise_data.get('tab', ''),
-        notes_data=str(exercise_data.get('notes', [])),
-    )
-    db.session.add(dynamic_exercise)
-    db.session.commit()
-    
-    return dynamic_exercise

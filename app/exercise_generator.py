@@ -19,7 +19,6 @@ BASS_STRINGS = {
     3: 9,   # A string - index 9
     4: 4,   # E string - index 4
 }
-STRING_NAMES = {1: 'G', 2: 'D', 3: 'A', 4: 'E'}
 
 # Scale formulas (intervals from root in semitones)
 SCALE_FORMULAS = {
@@ -160,7 +159,7 @@ def get_fret_for_note(string_num, note):
     return fret
 
 
-def generate_tab(notes_per_string, include_timing=False):
+def generate_tab(notes_per_string):
     """Generate tab notation for a sequence of notes."""
     lines = {1: 'G|', 2: 'D|', 3: 'A|', 4: 'E|'}
     
@@ -767,46 +766,3 @@ def generate_exercise(category=None, difficulty=1):
     generator = random.choice(generators)
     
     return generator(difficulty)
-
-
-def generate_practice_session(duration_minutes, skill_level):
-    """Generate a complete practice session with multiple exercises."""
-    exercises = []
-    remaining_time = duration_minutes
-    
-    # Structure: warm-up, main work, cool-down
-    phases = [
-        ('warm-up', 0.15, ['technique', 'scales']),  # 15% warm-up
-        ('technique', 0.35, ['technique', 'scales', 'arpeggios']),  # 35% technique
-        ('musical', 0.40, ['rhythm', 'arpeggios', 'theory']),  # 40% musical
-        ('cool-down', 0.10, ['scales', 'arpeggios']),  # 10% cool-down
-    ]
-    
-    for phase_name, phase_ratio, categories in phases:
-        phase_time = int(duration_minutes * phase_ratio)
-        if phase_time < 3:
-            phase_time = 3
-        
-        while phase_time > 0 and remaining_time > 0:
-            category = random.choice(categories)
-            
-            # Adjust difficulty based on phase
-            if phase_name == 'warm-up':
-                diff = max(1, skill_level - 1)
-            elif phase_name == 'cool-down':
-                diff = max(1, skill_level - 1)
-            else:
-                diff = skill_level
-            
-            exercise = generate_exercise(category, diff)
-            exercise['phase'] = phase_name
-            
-            exercise_time = exercise.get('duration', 5)
-            if exercise_time <= phase_time and exercise_time <= remaining_time:
-                exercises.append(exercise)
-                phase_time -= exercise_time
-                remaining_time -= exercise_time
-            else:
-                break
-    
-    return exercises

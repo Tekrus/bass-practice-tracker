@@ -17,8 +17,7 @@ def seed_database():
     # Seed chord progressions
     seed_chord_progressions()
     
-    # Seed ear training exercises
-    seed_ear_training_exercises()
+    # Note: Ear training exercises are now dynamically generated, not seeded
     
     # Initialize progress tracking for each category
     seed_progress()

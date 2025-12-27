@@ -1,7 +1,7 @@
 """
 Flask routes for Bass Practice application.
 """
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from .models import (
     db, UserProfile, Exercise, PracticeSession, SessionExercise, 
@@ -12,6 +12,7 @@ from .quiz_generator import generate_quiz, QUIZ_CATEGORIES
 from .exercise_generator import generate_exercise, EXERCISE_CATEGORIES
 from .practice_generator import generate_practice_session
 from .song_manager import generate_daily_song_playlist, update_song_mastery
+from .ear_training_generator import generate_ear_training_exercise
 
 main_bp = Blueprint('main', __name__)
 
@@ -447,13 +448,13 @@ def ear_training():
     """Ear training main page."""
     exercise_type = request.args.get('type', 'interval')
     
-    # Get exercise stats
-    total_attempts = EarTrainingResult.query.count()
-    correct_attempts = EarTrainingResult.query.filter_by(correct=True).count()
+    # Get exercise stats (only for dynamic exercises, exercise_id=0)
+    total_attempts = EarTrainingResult.query.filter_by(exercise_id=0).count()
+    correct_attempts = EarTrainingResult.query.filter_by(exercise_id=0, correct=True).count()
     accuracy = (correct_attempts / total_attempts * 100) if total_attempts > 0 else 0
     
     # Get recent results
-    recent_results = EarTrainingResult.query.order_by(
+    recent_results = EarTrainingResult.query.filter_by(exercise_id=0).order_by(
         EarTrainingResult.practiced_at.desc()
     ).limit(10).all()
     
@@ -468,8 +469,9 @@ def ear_training():
 def calculate_adaptive_difficulty(exercise_type):
     """Calculate difficulty based on recent performance."""
     # Get last 10 results for this exercise type
-    recent_results = EarTrainingResult.query.join(EarTrainingExercise).filter(
-        EarTrainingExercise.exercise_type == exercise_type
+    # Note: Since exercises are now dynamic, we use the stored difficulty in results
+    recent_results = EarTrainingResult.query.filter(
+        EarTrainingResult.exercise_id == 0  # Dynamic exercises use 0 as ID
     ).order_by(EarTrainingResult.practiced_at.desc()).limit(10).all()
     
     if not recent_results:
@@ -479,17 +481,17 @@ def calculate_adaptive_difficulty(exercise_type):
     correct_count = sum(1 for r in recent_results if r.correct)
     accuracy = correct_count / len(recent_results)
     
-    # Get current average difficulty of recent exercises
-    recent_exercises = [r.exercise for r in recent_results]
-    avg_difficulty = sum(e.difficulty_level for e in recent_exercises) / len(recent_exercises)
+    # Get difficulty from cache if available, otherwise estimate from results
+    # We'll track difficulty in the cache, but for now estimate from performance
+    estimated_difficulty = 2  # Default
     
     # Adjust difficulty based on accuracy
     if accuracy >= 0.8:  # 80%+ correct - increase difficulty
-        new_difficulty = min(5, int(avg_difficulty) + 1)
+        new_difficulty = min(5, estimated_difficulty + 1)
     elif accuracy <= 0.4:  # 40% or less - decrease difficulty
-        new_difficulty = max(1, int(avg_difficulty) - 1)
+        new_difficulty = max(1, estimated_difficulty - 1)
     else:  # Stay at current level
-        new_difficulty = max(1, int(avg_difficulty))
+        new_difficulty = max(1, estimated_difficulty)
     
     return new_difficulty
 
@@ -497,86 +499,80 @@ def calculate_adaptive_difficulty(exercise_type):
 @main_bp.route('/ear-training/exercise')
 def get_ear_training_exercise():
     """Get a new ear training exercise with adaptive difficulty."""
+    import uuid
+    
     exercise_type = request.args.get('type', 'interval')
     
     # Calculate adaptive difficulty
     difficulty = calculate_adaptive_difficulty(exercise_type)
     
-    # Get exercises at or below the calculated difficulty
-    exercise = EarTrainingExercise.query.filter_by(
-        exercise_type=exercise_type
-    ).filter(
-        EarTrainingExercise.difficulty_level <= difficulty
-    ).order_by(db.func.random()).first()
+    # Generate a new exercise dynamically
+    exercise_data = generate_ear_training_exercise(exercise_type, difficulty)
     
-    if not exercise:
-        return jsonify({'error': 'No exercises found'}), 404
+    # Generate a unique ID for this exercise
+    exercise_id = str(uuid.uuid4())
+    
+    # Cache the exercise for answer validation
+    _ear_training_cache[exercise_id] = {
+        'correct_answer': exercise_data['correct_answer'],
+        'exercise_type': exercise_type,
+        'difficulty': difficulty,
+        'root_note': exercise_data.get('root_note', 'C'),
+    }
+    
+    # Clean old cache entries (keep last 100)
+    if len(_ear_training_cache) > 100:
+        keys = list(_ear_training_cache.keys())
+        for key in keys[:-100]:
+            del _ear_training_cache[key]
     
     return jsonify({
-        'id': exercise.id,
-        'type': exercise.exercise_type,
-        'title': exercise.title,
-        'description': exercise.description,
-        'options': exercise.options,
-        'root_note': exercise.root_note,
-        'hints': exercise.hints,
-        'difficulty': difficulty  # Send current difficulty level for display
+        'id': exercise_id,
+        'type': exercise_data['type'],
+        'title': exercise_data['title'],
+        'description': exercise_data['description'],
+        'options': exercise_data['options'],
+        'root_note': exercise_data['root_note'],
+        'hints': exercise_data['hints'],
+        'difficulty': difficulty
     })
 
 
-@main_bp.route('/ear-training/play/<int:exercise_id>')
+@main_bp.route('/ear-training/play/<exercise_id>')
 def get_ear_training_audio(exercise_id):
     """Get audio data for an exercise without revealing the answer."""
-    exercise = EarTrainingExercise.query.get_or_404(exercise_id)
+    # Get exercise from cache
+    cached = _ear_training_cache.get(exercise_id)
+    if not cached:
+        return jsonify({'error': 'Exercise not found'}), 404
     
-    # Interval semitones mapping
-    intervals = {
-        'm2': 1, 'M2': 2, 'm3': 3, 'M3': 4, 'P4': 5,
-        'tritone': 6, 'P5': 7, 'm6': 8, 'M6': 9, 'm7': 10, 'M7': 11, 'P8': 12
-    }
+    answer = cached['correct_answer']
+    exercise_type = cached['exercise_type']
+    root_note = cached.get('root_note', 'C')
     
-    # Chord type to semitones mapping
-    chord_types = {
-        'major': [0, 4, 7],
-        'minor': [0, 3, 7],
-        'diminished': [0, 3, 6],
-        'augmented': [0, 4, 8],
-        'major7': [0, 4, 7, 11],
-        'minor7': [0, 3, 7, 10],
-        'dominant7': [0, 4, 7, 10],
-        'diminished7': [0, 3, 6, 9]
-    }
-    
-    # Scale degree to semitones (for melody exercises)
-    scale_degrees = {
-        '1': 0, '2': 2, '3': 4, '4': 5, '5': 7, '6': 9, '7': 11, '8': 12,
-        'b2': 1, 'b3': 3, 'b5': 6, 'b6': 8, 'b7': 10,
-        '#4': 6, '#5': 8
-    }
-    
-    answer = exercise.correct_answer
-    exercise_type = exercise.exercise_type
+    # Import constants from ear_training_generator
+    from .ear_training_generator import INTERVALS, CHORD_FORMULAS, SCALE_DEGREES
     
     if exercise_type == 'interval':
-        semitones = intervals.get(answer)
+        semitones = INTERVALS.get(answer)
         if semitones is not None:
-            return jsonify({'type': 'interval', 'semitones': semitones})
+            return jsonify({'type': 'interval', 'semitones': semitones, 'root_note': root_note})
     
     elif exercise_type == 'chord':
-        semitones = chord_types.get(answer)
+        semitones = CHORD_FORMULAS.get(answer)
         if semitones is not None:
-            return jsonify({'type': 'chord', 'semitones': semitones})
+            return jsonify({'type': 'chord', 'semitones': semitones, 'root_note': root_note})
     
     elif exercise_type == 'melody':
         # Parse melody pattern like "1-3-5-3" or "1-b3-5-b7"
         pattern = answer.split('-')
         semitones = []
         for degree in pattern:
-            s = scale_degrees.get(degree.strip())
+            s = SCALE_DEGREES.get(degree.strip())
             if s is not None:
                 semitones.append(s)
         if semitones:
-            return jsonify({'type': 'melody', 'semitones': semitones})
+            return jsonify({'type': 'melody', 'semitones': semitones, 'root_note': root_note})
     
     return jsonify({'error': 'Cannot generate audio for this exercise'}), 400
 
@@ -590,11 +586,16 @@ def submit_ear_training_answer():
     user_answer = data.get('answer')
     response_time = data.get('response_time')
     
-    exercise = EarTrainingExercise.query.get_or_404(exercise_id)
-    correct = user_answer == exercise.correct_answer
+    # Get exercise from cache
+    cached = _ear_training_cache.get(exercise_id)
+    if not cached:
+        return jsonify({'error': 'Exercise expired, please try again'}), 400
     
+    correct = user_answer == cached['correct_answer']
+    
+    # Save result (using exercise_id=0 for dynamic exercises)
     result = EarTrainingResult(
-        exercise_id=exercise_id,
+        exercise_id=0,  # Dynamic exercises don't have DB IDs
         user_answer=user_answer,
         correct=correct,
         response_time_ms=response_time
@@ -602,9 +603,12 @@ def submit_ear_training_answer():
     db.session.add(result)
     db.session.commit()
     
+    # Clean up cache
+    del _ear_training_cache[exercise_id]
+    
     return jsonify({
         'correct': correct,
-        'correct_answer': exercise.correct_answer
+        'correct_answer': cached['correct_answer']
     })
 
 
@@ -614,6 +618,9 @@ def submit_ear_training_answer():
 
 # Store generated questions temporarily for answer validation
 _quiz_cache = {}
+
+# Store generated ear training exercises temporarily for answer validation
+_ear_training_cache = {}
 
 
 def calculate_quiz_difficulty(quiz_category):
@@ -778,21 +785,16 @@ def progress():
         PracticeSession.is_completed == True
     ).scalar() or 0
     
-    # Get ear training stats
-    ear_stats = {}
-    for exercise_type in ['interval', 'chord', 'melody']:
-        total = EarTrainingResult.query.join(EarTrainingExercise).filter(
-            EarTrainingExercise.exercise_type == exercise_type
-        ).count()
-        correct = EarTrainingResult.query.join(EarTrainingExercise).filter(
-            EarTrainingExercise.exercise_type == exercise_type,
-            EarTrainingResult.correct == True
-        ).count()
-        ear_stats[exercise_type] = {
-            'total': total,
-            'correct': correct,
-            'accuracy': (correct / total * 100) if total > 0 else 0
+    # Get ear training stats (for dynamic exercises only, exercise_id=0)
+    total_ear = EarTrainingResult.query.filter_by(exercise_id=0).count()
+    correct_ear = EarTrainingResult.query.filter_by(exercise_id=0, correct=True).count()
+    ear_stats = {
+        'overall': {
+            'total': total_ear,
+            'correct': correct_ear,
+            'accuracy': (correct_ear / total_ear * 100) if total_ear > 0 else 0
         }
+    }
     
     # Get song progress
     total_songs = Song.query.count()
@@ -843,17 +845,16 @@ def settings():
 @main_bp.route('/admin/reseed', methods=['POST'])
 def reseed_database():
     """Force reseed the database with initial data."""
-    from .seed_data import seed_exercises, seed_chord_progressions, seed_ear_training_exercises, seed_progress
+    from .seed_data import seed_exercises, seed_chord_progressions, seed_progress
     
     # Clear existing data
     Exercise.query.delete()
     ChordProgression.query.delete()
-    EarTrainingExercise.query.delete()
+    # Note: EarTrainingExercise seeding removed - exercises are now dynamically generated
     
     # Reseed
     seed_exercises()
     seed_chord_progressions()
-    seed_ear_training_exercises()
     seed_progress()
     
     db.session.commit()
@@ -869,7 +870,7 @@ def database_status():
         'exercises': Exercise.query.count(),
         'exercises_by_category': {},
         'chord_progressions': ChordProgression.query.count(),
-        'ear_training_exercises': EarTrainingExercise.query.count(),
+        'ear_training_exercises': 'Dynamic (not stored in DB)',
         'practice_sessions': PracticeSession.query.count(),
         'songs': Song.query.count(),
         'user_profile': UserProfile.query.first() is not None
