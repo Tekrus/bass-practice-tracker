@@ -18,6 +18,42 @@ main_bp = Blueprint('main', __name__)
 
 
 # =============================================================================
+# Helper Functions
+# =============================================================================
+
+def update_progress_for_category(category, duration_minutes=0):
+    """
+    Update progress for a given category when an exercise is completed.
+    Calculates skill_level based on exercises completed.
+    """
+    # Get or create progress entry for this category
+    progress = Progress.query.filter_by(category=category).first()
+    if not progress:
+        progress = Progress(category=category)
+        db.session.add(progress)
+    
+    # Update exercise count and practice time
+    progress.exercises_completed += 1
+    progress.last_practiced = date.today()
+    if duration_minutes:
+        progress.total_practice_time += duration_minutes
+    
+    # Calculate skill_level based on exercises completed
+    # Use a logarithmic curve: faster growth at first, slower as you progress
+    # Formula: skill_level = 1 - (1 / (1 + exercises / 10))
+    # This gives: 1 exercise = ~9%, 5 = ~33%, 10 = ~50%, 20 = ~67%, 50 = ~83%, 100+ = ~91%+
+    exercises = progress.exercises_completed
+    if exercises <= 0:
+        progress.skill_level = 0.0
+    else:
+        # Logarithmic growth curve
+        progress.skill_level = min(1.0, 1.0 - (1.0 / (1.0 + exercises / 10.0)))
+    
+    db.session.commit()
+    return progress
+
+
+# =============================================================================
 # Dashboard Routes
 # =============================================================================
 
@@ -58,6 +94,15 @@ def dashboard():
     
     total_sessions = PracticeSession.query.filter_by(is_completed=True).count()
     
+    # Find the lowest skill category for recommended exercise
+    lowest_category = None
+    if progress_data:
+        lowest_progress = min(progress_data, key=lambda p: p.skill_level)
+        lowest_category = lowest_progress.category
+    else:
+        # If no progress yet, default to first category
+        lowest_category = EXERCISE_CATEGORIES[0] if EXERCISE_CATEGORIES else 'scales'
+    
     return render_template('dashboard.html',
         profile=profile,
         streak=streak,
@@ -66,7 +111,8 @@ def dashboard():
         progress_data=progress_data,
         song_playlist=song_playlist,
         total_practice_time=total_practice_time,
-        total_sessions=total_sessions
+        total_sessions=total_sessions,
+        recommended_category=lowest_category
     )
 
 
@@ -151,12 +197,8 @@ def complete_exercise(session_id, exercise_index):
     # Update progress for this category
     exercise_data = session_exercise.exercise_data
     if exercise_data:
-        progress = Progress.query.filter_by(category=exercise_data.category).first()
-        if progress:
-            progress.exercises_completed += 1
-            progress.last_practiced = date.today()
-            if session_exercise.actual_duration:
-                progress.total_practice_time += session_exercise.actual_duration
+        duration = session_exercise.actual_duration or 0
+        update_progress_for_category(exercise_data.category, duration)
     
     db.session.commit()
     
@@ -279,6 +321,70 @@ def get_exercise_categories():
     return jsonify({
         'categories': EXERCISE_CATEGORIES
     })
+
+
+@main_bp.route('/exercises/complete', methods=['POST'])
+def complete_individual_exercise():
+    """Track completion of an individual exercise (not in a practice session)."""
+    data = request.get_json()
+    
+    category = data.get('category')
+    duration = data.get('duration', 0)  # Optional duration in minutes
+    
+    if not category or category not in EXERCISE_CATEGORIES:
+        return jsonify({'error': 'Invalid category'}), 400
+    
+    # Update progress for this category
+    progress = update_progress_for_category(category, duration)
+    
+    return jsonify({
+        'success': True,
+        'category': category,
+        'skill_level': progress.skill_level,
+        'exercises_completed': progress.exercises_completed
+    })
+
+
+@main_bp.route('/exercises/recommended')
+def get_recommended_exercise():
+    """Generate a recommended exercise based on lowest skill level."""
+    # Get progress by category
+    progress_data = Progress.query.all()
+    
+    # Find the category with the lowest skill level
+    if progress_data:
+        lowest_progress = min(progress_data, key=lambda p: p.skill_level)
+        category = lowest_progress.category
+        # Use skill level to determine difficulty (convert 0.0-1.0 to 1-5)
+        difficulty = max(1, min(5, int(lowest_progress.skill_level * 5) + 1))
+    else:
+        # If no progress yet, start with scales at difficulty 1
+        category = 'scales'
+        difficulty = 1
+    
+    # Generate exercise data
+    exercise_data = generate_exercise(category, difficulty)
+    
+    # Create a DynamicExercise record
+    dynamic_exercise = DynamicExercise(
+        title=exercise_data['title'],
+        category=exercise_data['category'],
+        subcategory=exercise_data.get('subcategory', ''),
+        difficulty_level=exercise_data.get('difficulty', difficulty),
+        estimated_duration=exercise_data.get('duration', 5),
+        instructions=exercise_data.get('instructions', ''),
+        tips=exercise_data.get('tips', ''),
+        description=exercise_data.get('description', ''),
+        key_signature=exercise_data.get('key', ''),
+        tempo_bpm=exercise_data.get('tempo', 80),
+        tab_notation=exercise_data.get('tab', ''),
+        notes_data=str(exercise_data.get('notes', [])),
+    )
+    db.session.add(dynamic_exercise)
+    db.session.commit()
+    
+    # Redirect to the exercise detail page
+    return redirect(url_for('main.dynamic_exercise_detail', exercise_id=dynamic_exercise.id))
 
 
 # =============================================================================
@@ -603,6 +709,12 @@ def submit_ear_training_answer():
     db.session.add(result)
     db.session.commit()
     
+    # Update progress for theory category when exercise is completed
+    # Ear training exercises (intervals, chords, melodies) are theory-related
+    if correct:
+        # Only count correct answers toward progress
+        update_progress_for_category('theory', duration_minutes=0)
+    
     # Clean up cache
     del _ear_training_cache[exercise_id]
     
@@ -800,6 +912,15 @@ def progress():
     total_songs = Song.query.count()
     mastered_songs = Song.query.filter(Song.mastery_level >= 4).count()
     
+    # Find the lowest skill category for recommended exercise
+    lowest_category = None
+    if progress_data:
+        lowest_progress = min(progress_data, key=lambda p: p.skill_level)
+        lowest_category = lowest_progress.category
+    else:
+        # If no progress yet, default to first category
+        lowest_category = EXERCISE_CATEGORIES[0] if EXERCISE_CATEGORIES else 'scales'
+    
     return render_template('progress.html',
         progress_data=progress_data,
         sessions=sessions,
@@ -807,7 +928,8 @@ def progress():
         weekly_time=weekly_time,
         ear_stats=ear_stats,
         total_songs=total_songs,
-        mastered_songs=mastered_songs
+        mastered_songs=mastered_songs,
+        recommended_category=lowest_category
     )
 
 

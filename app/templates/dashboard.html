@@ -152,6 +152,13 @@
                 </div>
                 <div class="card-body">
                     <canvas id="progressChart"></canvas>
+                    {% if recommended_category %}
+                    <div class="mt-3 pt-3 border-top">
+                        <a href="{{ url_for('main.get_recommended_exercise') }}" class="btn btn-primary w-100">
+                            <i class="bi bi-star"></i> Practice {{ recommended_category|title }} (Recommended)
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
