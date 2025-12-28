@@ -18,6 +18,12 @@ LLM_PROVIDERS = {
         'url': 'http://localhost:11434/api/generate',
         'local': True,
     },
+    'ollama_cloud': {
+        'name': 'Ollama Cloud',
+        'models': [],  # populated dynamically
+        'env_key': 'OLLAMA_API_KEY',
+        'url': 'https://ollama.com/api/generate'
+    },
     'groq': {
         'name': 'Groq',
         'models': [
@@ -71,6 +77,30 @@ def get_ollama_models():
     except Exception:
         return []
 
+def get_ollama_cloud_models(api_key):
+    """Fetch available models from Ollama Cloud."""
+    try:
+        req = urllib.request.Request(
+            'https://ollama.com/api/tags',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+            },
+            method='GET',
+        )
+
+        with urllib.request.urlopen(req, timeout=10) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            models = []
+            for model in result.get('models', []):
+                name = model.get('name', '')
+                # Clean up model name for display
+                display_name = name.split(':')[0].replace('-', ' ').title()
+                models.append({'id': name, 'name': display_name})
+
+            return models
+    except Exception:
+        return []
 
 def is_ollama_running():
     """Check if Ollama is running locally."""
@@ -101,6 +131,20 @@ def get_available_providers():
                 'env_key': None,
                 'local': True,
                 'status': 'running' if ollama_running else 'not running',
+            })
+            continue
+
+        if provider_id == 'ollama_cloud':
+            api_key = os.environ.get(provider['env_key'])
+            models = get_ollama_cloud_models(api_key) if api_key else []
+
+            available.append({
+                'id': provider_id,
+                'name': provider['name'],
+                'models': models,
+                'configured': bool(api_key and models),
+                'env_key': provider['env_key'],
+                'local': False,
             })
             continue
         
@@ -259,7 +303,8 @@ def call_openai_compatible_api(url, api_key, model, prompt, extra_headers=None):
     }).encode('utf-8')
     
     req = urllib.request.Request(url, data=data, headers=headers, method='POST')
-    
+    print(headers)
+
     with urllib.request.urlopen(req, timeout=30) as response:
         result = json.loads(response.read().decode('utf-8'))
         return result['choices'][0]['message']['content']
@@ -302,6 +347,30 @@ def call_ollama_api(model, prompt):
         result = json.loads(response.read().decode('utf-8'))
         return result['response']
 
+def call_ollama_cloud_api(api_key, model, prompt):
+    """Call online Ollama API."""
+    url = 'https://ollama.com/api/generate'
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+    }
+    
+    data = json.dumps({
+        'model': model,
+        'prompt': prompt,
+        'stream': False,
+        'options': {
+            'temperature': 0.7,
+        }
+    }).encode('utf-8')
+    
+    req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+    
+    # Longer timeout for local models which can be slower
+    with urllib.request.urlopen(req, timeout=120) as response:
+        result = json.loads(response.read().decode('utf-8'))
+        return result['response']
 
 def parse_response(response_text):
     """Parse the LLM response into a suggestion dict."""
@@ -392,6 +461,8 @@ def generate_song_suggestion(provider_id='ollama', model_id=None, level=None, ge
             response_text = call_ollama_api(model_id, prompt)
         elif provider_id == 'gemini':
             response_text = call_gemini_api(api_key, model_id, prompt)
+        elif provider_id == 'ollama_cloud':
+            response_text = call_ollama_cloud_api(api_key, model_id, prompt)
         elif provider_id == 'openrouter':
             extra_headers = {'HTTP-Referer': 'http://localhost:5000', 'X-Title': 'Bass Practice'}
             response_text = call_openai_compatible_api(
