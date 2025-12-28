@@ -343,7 +343,7 @@ def call_ollama_api(model, prompt):
     req = urllib.request.Request(url, data=data, headers=headers, method='POST')
     
     # Longer timeout for local models which can be slower
-    with urllib.request.urlopen(req, timeout=120) as response:
+    with urllib.request.urlopen(req, timeout=900) as response:
         result = json.loads(response.read().decode('utf-8'))
         return result['response']
 
