@@ -153,6 +153,7 @@
         .badge-technique { background-color: #ef4444; color: #ffffff; }
         .badge-theory { background-color: #8b5cf6; color: #ffffff; }
         .badge-ear_training { background-color: #ec4899; color: #ffffff; }
+        .badge-timing { background-color: #06b6d4; color: #ffffff; }
         
         .badge {
             color: #ffffff;
@@ -527,6 +528,11 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'main.ear_training' %}active{% endif %}" href="{{ url_for('main.ear_training') }}">
                             <i class="bi bi-ear"></i> Ear Training
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'main.timing_practice' %}active{% endif %}" href="{{ url_for('main.timing_practice') }}">
+                            <i class="bi bi-stopwatch"></i> Timing
                         </a>
                     </li>
                     <li class="nav-item">
