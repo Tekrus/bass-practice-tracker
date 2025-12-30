@@ -1161,9 +1161,7 @@ def start_timing_game():
     # Cache the exercise configuration
     _timing_cache[session_id] = {
         'exercise': exercise,
-        'hits': [],
         'started_at': None,
-        'current_note_index': 0,
     }
     
     # Clean old cache entries
@@ -1188,122 +1186,35 @@ def start_timing_game():
     })
 
 
-@main_bp.route('/timing/hit', methods=['POST'])
-def register_timing_hit():
-    """Register a note hit from the player."""
-    data = request.get_json()
-    session_id = data.get('session_id')
-    hit_time_ms = data.get('hit_time_ms')
-    note_index = data.get('note_index')
-    
-    cached = _timing_cache.get(session_id)
-    if not cached:
-        return jsonify({'error': 'Session not found'}), 404
-    
-    exercise = cached['exercise']
-    beat_times = exercise['beat_times']
-    
-    if note_index >= len(beat_times):
-        return jsonify({'error': 'Invalid note index'}), 400
-    
-    # Calculate timing offset
-    expected_time = beat_times[note_index]
-    offset_ms = hit_time_ms - expected_time
-    
-    # Determine hit quality
-    quality, score, is_early = calculate_hit_quality(
-        offset_ms,
-        exercise['perfect_window_ms'],
-        exercise['good_window_ms']
-    )
-    
-    # Record the hit
-    hit_record = {
-        'note_index': note_index,
-        'expected_time': expected_time,
-        'hit_time': hit_time_ms,
-        'offset_ms': offset_ms,
-        'quality': quality,
-        'score': score,
-    }
-    cached['hits'].append(hit_record)
-    
-    # Calculate current streak
-    streak = 0
-    for h in reversed(cached['hits']):
-        if h['quality'] in ('perfect', 'good'):
-            streak += 1
-        else:
-            break
-    
-    return jsonify({
-        'quality': quality,
-        'score': score,
-        'offset_ms': round(offset_ms, 1),
-        'is_early': is_early,
-        'streak': streak,
-    })
-
-
-@main_bp.route('/timing/miss', methods=['POST'])
-def register_timing_miss():
-    """Register a missed note."""
-    data = request.get_json()
-    session_id = data.get('session_id')
-    note_index = data.get('note_index')
-    
-    cached = _timing_cache.get(session_id)
-    if not cached:
-        return jsonify({'error': 'Session not found'}), 404
-    
-    exercise = cached['exercise']
-    beat_times = exercise['beat_times']
-    
-    if note_index >= len(beat_times):
-        return jsonify({'error': 'Invalid note index'}), 400
-    
-    # Record the miss
-    hit_record = {
-        'note_index': note_index,
-        'expected_time': beat_times[note_index],
-        'hit_time': None,
-        'offset_ms': None,
-        'quality': 'miss',
-        'score': 0,
-    }
-    cached['hits'].append(hit_record)
-    
-    return jsonify({'quality': 'miss', 'score': 0, 'streak': 0})
-
-
 @main_bp.route('/timing/complete', methods=['POST'])
 def complete_timing_game():
     """Complete a timing practice game and save results."""
     data = request.get_json()
     session_id = data.get('session_id')
     duration_seconds = data.get('duration_seconds', 0)
+    hits = data.get('hits', [])  # Receive hits from client
     
     cached = _timing_cache.get(session_id)
     if not cached:
         return jsonify({'error': 'Session not found'}), 404
     
     exercise = cached['exercise']
-    hits = cached['hits']
     
-    # Calculate final stats
+    # Calculate final stats from client-submitted hits
     stats = calculate_session_score(hits)
     
     # Generate tips
     tips = generate_practice_tips(stats)
     
     # Save session to database
+    # Note: ok_hits combined with good_hits for DB storage (no schema change)
     timing_session = TimingSession(
         tempo_bpm=exercise['tempo'],
         game_mode=exercise['game_mode'],
         difficulty=exercise['difficulty'],
         total_notes=stats['total_notes'],
         perfect_hits=stats['perfect_hits'],
-        good_hits=stats['good_hits'],
+        good_hits=stats['good_hits'] + stats.get('ok_hits', 0),
         early_hits=stats['early_hits'],
         late_hits=stats['late_hits'],
         missed_notes=stats['missed_notes'],
