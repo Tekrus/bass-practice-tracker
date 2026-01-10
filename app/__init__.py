@@ -25,8 +25,8 @@ def create_app():
     db.init_app(app)
     
     # Register blueprints
-    from .routes import main_bp
-    app.register_blueprint(main_bp)
+    from .routes import register_blueprints
+    register_blueprints(app)
     
     # Create database tables
     with app.app_context():

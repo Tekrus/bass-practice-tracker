@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/badges.html" import progress_bar, star_rating %}
 
 {% block title %}Progress - Bass Practice{% endblock %}
 
@@ -10,7 +11,7 @@
             <p class="text-secondary">Track your improvement over time</p>
         </div>
     </div>
-    
+
     <!-- Top Stats -->
     <div class="row mb-4">
         <div class="col-md-3">
@@ -40,7 +41,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="row">
         <!-- Category Progress -->
         <div class="col-lg-6 mb-4">
@@ -50,31 +51,29 @@
                 </div>
                 <div class="card-body">
                     {% for progress in progress_data %}
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between mb-1">
-                                <span class="text-capitalize">{{ progress.category }}</span>
-                                <span>{{ (progress.skill_level * 100)|round(1) }}%</span>
-                            </div>
-                            <div class="progress" style="height: 10px;">
-                                <div class="progress-bar badge-{{ progress.category }}" 
-                                     style="width: {{ progress.skill_level * 100 }}%"></div>
-                            </div>
-                            <small class="text-secondary">
-                                {{ progress.exercises_completed }} exercises completed | 
-                                {{ progress.total_practice_time }} min practiced
-                            </small>
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-capitalize">{{ progress.category }}</span>
+                            <span>{{ (progress.skill_level * 100)|round(1) }}%</span>
                         </div>
+                        {{ progress_bar(progress.skill_level * 100, extra_class='badge-' ~ progress.category) }}
+                        <small class="text-secondary">
+                            {{ progress.exercises_completed }} exercises completed |
+                            {{ progress.total_practice_time }} min practiced
+                        </small>
+                    </div>
                     {% else %}
-                        <p class="text-center text-secondary py-4">Start practicing to see your progress!</p>
+                    <p class="text-center text-secondary py-4">Start practicing to see your progress!</p>
                     {% endfor %}
-                    
+
                     {% if recommended_category %}
                     <div class="mt-4 pt-3 border-top">
                         <p class="text-secondary small mb-2">
-                            <i class="bi bi-lightbulb"></i> 
-                            Recommended: Practice <strong>{{ recommended_category|title }}</strong> to improve your weakest skill
+                            <i class="bi bi-lightbulb"></i>
+                            Recommended: Practice <strong>{{ recommended_category|title }}</strong> to improve your
+                            weakest skill
                         </p>
-                        <a href="{{ url_for('main.get_recommended_exercise') }}" class="btn btn-primary w-100">
+                        <a href="{{ url_for('exercises.get_recommended_exercise') }}" class="btn btn-primary w-100">
                             <i class="bi bi-star"></i> Get Recommended Exercise
                         </a>
                     </div>
@@ -82,7 +81,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Practice History Chart -->
         <div class="col-lg-6 mb-4">
             <div class="card h-100">
@@ -95,7 +94,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="row">
         <!-- Ear Training Stats -->
         <div class="col-lg-6 mb-4">
@@ -105,22 +104,20 @@
                 </div>
                 <div class="card-body">
                     {% for type, stats in ear_stats.items() %}
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between mb-1">
-                                <span class="text-capitalize">{{ type }}</span>
-                                <span>{{ stats.accuracy|round(1) }}% ({{ stats.correct }}/{{ stats.total }})</span>
-                            </div>
-                            <div class="progress" style="height: 10px;">
-                                <div class="progress-bar bg-success" style="width: {{ stats.accuracy }}%"></div>
-                            </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-capitalize">{{ type }}</span>
+                            <span>{{ stats.accuracy|round(1) }}% ({{ stats.correct }}/{{ stats.total }})</span>
                         </div>
+                        {{ progress_bar(stats.accuracy, color_class='success') }}
+                    </div>
                     {% else %}
-                        <p class="text-center text-secondary py-4">Complete ear training exercises to see your accuracy!</p>
+                    <p class="text-center text-secondary py-4">Complete ear training exercises to see your accuracy!</p>
                     {% endfor %}
                 </div>
             </div>
         </div>
-        
+
         <!-- Song Progress -->
         <div class="col-lg-6 mb-4">
             <div class="card h-100">
@@ -142,30 +139,26 @@
                             <div class="text-secondary">Learning</div>
                         </div>
                     </div>
-                    
+
                     {% if total_songs > 0 %}
-                        <div class="mt-4">
-                            <div class="d-flex justify-content-between mb-1">
-                                <span>Mastery Progress</span>
-                                <span>{{ ((mastered_songs / total_songs) * 100)|round(1) }}%</span>
-                            </div>
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-success" 
-                                     style="width: {{ (mastered_songs / total_songs) * 100 }}%">
-                                    Mastered
-                                </div>
-                                <div class="progress-bar bg-warning" 
-                                     style="width: {{ ((total_songs - mastered_songs) / total_songs) * 100 }}%">
-                                    Learning
-                                </div>
-                            </div>
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Mastery Progress</span>
+                            <span>{{ ((mastered_songs / total_songs) * 100)|round(1) }}%</span>
                         </div>
+                        <div class="progress" style="height: 20px;">
+                            {{ progress_bar(mastered_songs, max_value=total_songs, color_class='success',
+                            extra_class='progress-bar', no_wrapper=True) }}
+                            {{ progress_bar(total_songs - mastered_songs, max_value=total_songs, color_class='warning',
+                            extra_class='progress-bar', no_wrapper=True) }}
+                        </div>
+                    </div>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Recent Sessions -->
     <div class="row">
         <div class="col-12">
@@ -175,40 +168,39 @@
                 </div>
                 <div class="card-body p-0">
                     {% if sessions %}
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Duration</th>
-                                        <th>Exercises</th>
-                                        <th>Rating</th>
-                                        <th>Notes</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for session in sessions %}
-                                        <tr>
-                                            <td>{{ session.session_date.strftime('%B %d, %Y') }}</td>
-                                            <td>{{ session.actual_duration or session.planned_duration }} min</td>
-                                            <td>{{ session.completed_exercises }}/{{ session.total_exercises }}</td>
-                                            <td>
-                                                {% if session.session_rating %}
-                                                    {% for i in range(session.session_rating) %}
-                                                        <i class="bi bi-star-fill text-warning"></i>
-                                                    {% endfor %}
-                                                {% else %}
-                                                    <span class="text-secondary">-</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ session.session_notes[:50] if session.session_notes else '-' }}{{ '...' if session.session_notes and session.session_notes|length > 50 else '' }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Duration</th>
+                                    <th>Exercises</th>
+                                    <th>Rating</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions %}
+                                <tr>
+                                    <td>{{ session.session_date.strftime('%B %d, %Y') }}</td>
+                                    <td>{{ session.actual_duration or session.planned_duration }} min</td>
+                                    <td>{{ session.completed_exercises }}/{{ session.total_exercises }}</td>
+                                    <td>
+                                        {% if session.session_rating %}
+                                        {{ star_rating(session.session_rating) }}
+                                        {% else %}
+                                        <span class="text-secondary">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ session.session_notes[:50] if session.session_notes else '-' }}{{ '...' if
+                                        session.session_notes and session.session_notes|length > 50 else '' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <p class="text-center text-secondary py-4">No practice sessions recorded yet.</p>
+                    <p class="text-center text-secondary py-4">No practice sessions recorded yet.</p>
                     {% endif %}
                 </div>
             </div>
@@ -218,59 +210,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    // Fetch and display practice chart
-    fetch('/api/progress-data')
-        .then(response => response.json())
-        .then(data => {
-            const ctx = document.getElementById('practiceChart');
-            if (ctx && data.daily_practice) {
-                // Get last 14 days
-                const labels = [];
-                const values = [];
-                const today = new Date();
-                
-                for (let i = 13; i >= 0; i--) {
-                    const date = new Date(today);
-                    date.setDate(date.getDate() - i);
-                    const dateStr = date.toISOString().split('T')[0];
-                    labels.push(date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
-                    values.push(data.daily_practice[dateStr] || 0);
-                }
-                
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Minutes Practiced',
-                            data: values,
-                            backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                            borderColor: 'rgb(99, 102, 241)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { color: '#a6adc8' },
-                                grid: { color: 'rgba(255,255,255,0.1)' }
-                            },
-                            x: {
-                                ticks: { color: '#a6adc8' },
-                                grid: { color: 'rgba(255,255,255,0.1)' }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                labels: { color: '#cdd6f4' }
-                            }
-                        }
-                    }
-                });
-            }
-        });
-</script>
+<script src="{{ url_for('static', filename='js/progress.js') }}"></script>
 {% endblock %}

@@ -106,6 +106,7 @@ RHYTHM_PATTERNS = {
 # Scoring
 SCORE_PERFECT = 100
 SCORE_GOOD = 50
+SCORE_OK = 25
 SCORE_EARLY = 10
 SCORE_LATE = 10
 SCORE_MISS = 0
@@ -194,18 +195,22 @@ def generate_timing_exercise(game_mode, difficulty=1, tempo=None, duration_bars=
     }
 
 
-def calculate_hit_quality(timing_offset_ms, perfect_window, good_window):
+def calculate_hit_quality(timing_offset_ms, perfect_window, good_window, detection_window=None):
     """
     Determine the quality of a hit based on timing offset.
     
     Args:
-        timing_offset_ms: Difference from perfect timing (can be negative for early)
+        timing_offset_ms: Difference from perfect timing (negative = early)
         perfect_window: +/- ms for perfect hit
         good_window: +/- ms for good hit
+        detection_window: +/- ms for ok hit (defaults to good_window * 1.5)
     
     Returns:
         tuple: (quality, score, is_early)
     """
+    if detection_window is None:
+        detection_window = good_window * 1.5
+    
     abs_offset = abs(timing_offset_ms)
     is_early = timing_offset_ms < 0
     
@@ -213,6 +218,8 @@ def calculate_hit_quality(timing_offset_ms, perfect_window, good_window):
         return ('perfect', SCORE_PERFECT, is_early)
     elif abs_offset <= good_window:
         return ('good', SCORE_GOOD, is_early)
+    elif abs_offset <= detection_window:
+        return ('ok', SCORE_OK, is_early)
     elif is_early:
         return ('early', SCORE_EARLY, True)
     else:
@@ -235,6 +242,7 @@ def calculate_session_score(hits, streak_bonus=True):
     best_streak = 0
     perfect_count = 0
     good_count = 0
+    ok_count = 0
     early_count = 0
     late_count = 0
     miss_count = 0
@@ -243,16 +251,23 @@ def calculate_session_score(hits, streak_bonus=True):
     for hit in hits:
         quality = hit.get('quality', 'miss')
         base_score = hit.get('score', 0)
-        offset = hit.get('offset_ms', 0)
+        offset = hit.get('offset_ms')
         
         if quality == 'perfect':
             perfect_count += 1
             current_streak += 1
-            timing_offsets.append(offset)
+            if offset is not None:
+                timing_offsets.append(offset)
         elif quality == 'good':
             good_count += 1
             current_streak += 1
-            timing_offsets.append(offset)
+            if offset is not None:
+                timing_offsets.append(offset)
+        elif quality == 'ok':
+            ok_count += 1
+            current_streak += 1  # OK maintains streak
+            if offset is not None:
+                timing_offsets.append(offset)
         elif quality == 'early':
             early_count += 1
             current_streak = 0
@@ -274,21 +289,25 @@ def calculate_session_score(hits, streak_bonus=True):
         total_score += base_score
         best_streak = max(best_streak, current_streak)
     
-    total_notes = perfect_count + good_count + early_count + late_count + miss_count
+    total_notes = perfect_count + good_count + ok_count + early_count + late_count + miss_count
     avg_timing = sum(timing_offsets) / len(timing_offsets) if timing_offsets else 0
+    
+    # Accuracy includes ok hits (they maintain streak)
+    accurate_hits = perfect_count + good_count + ok_count
     
     return {
         'total_score': total_score,
         'total_notes': total_notes,
         'perfect_hits': perfect_count,
         'good_hits': good_count,
+        'ok_hits': ok_count,
         'early_hits': early_count,
         'late_hits': late_count,
         'missed_notes': miss_count,
         'best_streak': best_streak,
         'final_streak': current_streak,
         'average_timing_ms': round(avg_timing, 2),
-        'accuracy_percentage': round((perfect_count + good_count) / total_notes * 100, 1) if total_notes > 0 else 0,
+        'accuracy_percentage': round(accurate_hits / total_notes * 100, 1) if total_notes > 0 else 0,
         'perfect_percentage': round(perfect_count / total_notes * 100, 1) if total_notes > 0 else 0,
     }
 
@@ -335,6 +354,11 @@ def generate_practice_tips(stats):
         tips.append("Excellent precision! Consider increasing the difficulty or tempo.")
     elif stats['perfect_percentage'] < 30:
         tips.append("Focus on the first beat of each measure to anchor your timing.")
+    
+    # Tip for many ok hits
+    ok_hits = stats.get('ok_hits', 0)
+    if ok_hits > stats['perfect_hits'] + stats['good_hits']:
+        tips.append("You're close but not quite locked in. Try a slower tempo to tighten your timing.")
     
     if stats['best_streak'] >= 20:
         tips.append(f"Great streak of {stats['best_streak']}! Consistency is key.")

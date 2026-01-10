@@ -10,7 +10,7 @@
             <p class="text-secondary">Configure your practice preferences</p>
         </div>
     </div>
-    
+
     <div class="row">
         <div class="col-lg-8">
             <div class="card">
@@ -22,73 +22,81 @@
                         <div class="row g-4">
                             <div class="col-md-6">
                                 <label class="form-label">Skill Level (1-10)</label>
-                                <input type="range" class="form-range" name="skill_level" 
-                                       min="1" max="10" 
-                                       value="{{ profile.skill_level if profile else 1 }}"
-                                       id="skillLevelRange">
+                                <input type="range" class="form-range" name="skill_level" min="1" max="10"
+                                    value="{{ profile.skill_level if profile else 1 }}" id="skillLevelRange">
                                 <div class="d-flex justify-content-between">
                                     <small>Beginner</small>
                                     <strong id="skillLevelValue">{{ profile.skill_level if profile else 1 }}</strong>
                                     <small>Expert</small>
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label class="form-label">Skill Category</label>
                                 <select name="skill_category" class="form-select">
-                                    <option value="beginner" {% if profile and profile.skill_category == 'beginner' %}selected{% endif %}>
+                                    <option value="beginner" {% if profile and profile.skill_category=='beginner'
+                                        %}selected{% endif %}>
                                         Beginner (Learning fundamentals)
                                     </option>
-                                    <option value="intermediate" {% if profile and profile.skill_category == 'intermediate' %}selected{% endif %}>
+                                    <option value="intermediate" {% if profile and
+                                        profile.skill_category=='intermediate' %}selected{% endif %}>
                                         Intermediate (Building technique)
                                     </option>
-                                    <option value="advanced" {% if profile and profile.skill_category == 'advanced' %}selected{% endif %}>
+                                    <option value="advanced" {% if profile and profile.skill_category=='advanced'
+                                        %}selected{% endif %}>
                                         Advanced (Refining skills)
                                     </option>
                                 </select>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label class="form-label">Preferred Genre</label>
                                 <select name="preferred_genre" class="form-select">
-                                    {% for genre in ['rock', 'funk', 'jazz', 'blues', 'metal', 'pop', 'reggae', 'country', 'latin'] %}
-                                        <option value="{{ genre }}" {% if profile and profile.preferred_genre == genre %}selected{% endif %}>
-                                            {{ genre|capitalize }}
-                                        </option>
+                                    {% for genre in ['rock', 'funk', 'jazz', 'blues', 'metal', 'pop', 'reggae',
+                                    'country', 'latin'] %}
+                                    <option value="{{ genre }}" {% if profile and profile.preferred_genre==genre
+                                        %}selected{% endif %}>
+                                        {{ genre|capitalize }}
+                                    </option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label class="form-label">Session Duration (minutes)</label>
                                 <select name="session_duration" class="form-select">
                                     {% for duration in [15, 30, 45, 60, 90, 120] %}
-                                        <option value="{{ duration }}" {% if profile and profile.session_duration == duration %}selected{% endif %}>
-                                            {{ duration }} minutes
-                                        </option>
+                                    <option value="{{ duration }}" {% if profile and profile.session_duration==duration
+                                        %}selected{% endif %}>
+                                        {{ duration }} minutes
+                                    </option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label class="form-label">Bass Tuning</label>
                                 <select name="bass_tuning" class="form-select">
-                                    <option value="standard" {% if profile and profile.bass_tuning == 'standard' %}selected{% endif %}>
+                                    <option value="standard" {% if profile and profile.bass_tuning=='standard'
+                                        %}selected{% endif %}>
                                         Standard (E-A-D-G)
                                     </option>
-                                    <option value="drop_d" {% if profile and profile.bass_tuning == 'drop_d' %}selected{% endif %}>
+                                    <option value="drop_d" {% if profile and profile.bass_tuning=='drop_d' %}selected{%
+                                        endif %}>
                                         Drop D (D-A-D-G)
                                     </option>
-                                    <option value="half_step_down" {% if profile and profile.bass_tuning == 'half_step_down' %}selected{% endif %}>
+                                    <option value="half_step_down" {% if profile and
+                                        profile.bass_tuning=='half_step_down' %}selected{% endif %}>
                                         Half Step Down (Eb-Ab-Db-Gb)
                                     </option>
-                                    <option value="full_step_down" {% if profile and profile.bass_tuning == 'full_step_down' %}selected{% endif %}>
+                                    <option value="full_step_down" {% if profile and
+                                        profile.bass_tuning=='full_step_down' %}selected{% endif %}>
                                         Full Step Down (D-G-C-F)
                                     </option>
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div class="mt-4">
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="bi bi-check-lg"></i> Save Settings
@@ -98,7 +106,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-lg-4">
             <div class="card mb-4">
                 <div class="card-header">
@@ -106,14 +114,15 @@
                 </div>
                 <div class="card-body">
                     <ul class="list-unstyled mb-0">
-                        <li class="mb-2"><strong>1-3:</strong> Learning basic techniques, scales, and finger positioning</li>
+                        <li class="mb-2"><strong>1-3:</strong> Learning basic techniques, scales, and finger positioning
+                        </li>
                         <li class="mb-2"><strong>4-6:</strong> Comfortable with basics, learning songs and patterns</li>
                         <li class="mb-2"><strong>7-8:</strong> Solid technique, exploring advanced concepts</li>
                         <li class="mb-0"><strong>9-10:</strong> Advanced player, refining nuances</li>
                     </ul>
                 </div>
             </div>
-            
+
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="bi bi-clock"></i> Session Duration Guide</h5>
@@ -133,9 +142,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    document.getElementById('skillLevelRange').addEventListener('input', function() {
-        document.getElementById('skillLevelValue').textContent = this.value;
-    });
-</script>
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 {% endblock %}
