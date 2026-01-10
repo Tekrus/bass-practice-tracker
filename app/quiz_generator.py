@@ -4,22 +4,14 @@ Generates questions algorithmically based on music theory.
 """
 import random
 import json
-
-# =============================================================================
-# MUSIC THEORY CONSTANTS
-# =============================================================================
-
-NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-NOTES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
-
-# Bass string open notes (string number -> note index in NOTES)
-BASS_STRINGS = {
-    1: 7,   # G string - index 7
-    2: 2,   # D string - index 2
-    3: 9,   # A string - index 9
-    4: 4,   # E string - index 4
-}
-STRING_NAMES = {1: 'G', 2: 'D', 3: 'A', 4: 'E'}
+from .config.settings import (
+    NOTES, NOTES_FLAT, BASS_STRINGS, STRING_NAMES,
+    SCALE_FORMULAS, KEY_SIGNATURES, CIRCLE_OF_FIFTHS
+)
+from .utils.music_theory import (
+    note_to_index as get_note_index,
+    index_to_note as get_note_at_index
+)
 
 # Intervals (semitones -> name)
 INTERVALS = {
@@ -58,49 +50,10 @@ CHORD_FORMULAS = {
     'dominant 9th': [0, 4, 7, 10, 14],
 }
 
-# Scale formulas (intervals from root in semitones)
-SCALE_FORMULAS = {
-    'major': [0, 2, 4, 5, 7, 9, 11],
-    'natural minor': [0, 2, 3, 5, 7, 8, 10],
-    'harmonic minor': [0, 2, 3, 5, 7, 8, 11],
-    'melodic minor': [0, 2, 3, 5, 7, 9, 11],
-    'major pentatonic': [0, 2, 4, 7, 9],
-    'minor pentatonic': [0, 3, 5, 7, 10],
-    'blues': [0, 3, 5, 6, 7, 10],
-    'dorian': [0, 2, 3, 5, 7, 9, 10],
-    'phrygian': [0, 1, 3, 5, 7, 8, 10],
-    'lydian': [0, 2, 4, 6, 7, 9, 11],
-    'mixolydian': [0, 2, 4, 5, 7, 9, 10],
-    'locrian': [0, 1, 3, 5, 6, 8, 10],
-}
-
-# Key signatures (number of sharps positive, flats negative)
-KEY_SIGNATURES = {
-    'C': 0, 'G': 1, 'D': 2, 'A': 3, 'E': 4, 'B': 5, 'F#': 6,
-    'F': -1, 'Bb': -2, 'Eb': -3, 'Ab': -4, 'Db': -5, 'Gb': -6,
-}
-
-# Circle of fifths order
-CIRCLE_OF_FIFTHS = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'Ab', 'Eb', 'Bb', 'F']
-
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
-
-def get_note_at_index(index, use_flats=False):
-    """Get note name at given index (0-11), wrapping around."""
-    index = index % 12
-    return NOTES_FLAT[index] if use_flats else NOTES[index]
-
-
-def get_note_index(note):
-    """Get the index (0-11) of a note."""
-    if note in NOTES:
-        return NOTES.index(note)
-    if note in NOTES_FLAT:
-        return NOTES_FLAT.index(note)
-    return 0
 
 
 def get_chord_notes(root, chord_type):

@@ -8,50 +8,52 @@
         <div class="col-12">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('main.chord_progressions') }}">Progressions</a></li>
+                    <li class="breadcrumb-item"><a
+                            href="{{ url_for('progressions.chord_progressions') }}">Progressions</a></li>
                     <li class="breadcrumb-item active">{{ progression.name }}</li>
                 </ol>
             </nav>
         </div>
     </div>
-    
+
     <div class="row">
         <div class="col-lg-8 mb-4">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">{{ progression.name }}</h4>
                     {% if progression.genre %}
-                        <span class="badge bg-info fs-6">{{ progression.genre|capitalize }}</span>
+                    <span class="badge bg-info fs-6">{{ progression.genre|capitalize }}</span>
                     {% endif %}
                 </div>
                 <div class="card-body">
                     <div class="text-center py-4">
                         <h1 class="display-4 text-primary">{{ progression.numerals }}</h1>
                     </div>
-                    
+
                     {% if progression.description %}
-                        <p class="lead">{{ progression.description }}</p>
+                    <p class="lead">{{ progression.description }}</p>
                     {% endif %}
-                    
+
                     {% if progression.bass_line_examples %}
-                        <hr>
-                        <h5><i class="bi bi-music-note-beamed"></i> Bass Line Patterns</h5>
-                        <ul class="list-group list-group-flush">
-                            {% for example in progression.bass_line_examples.replace('[', '').replace(']', '').replace('"', '').split(',') %}
-                                <li class="list-group-item bg-transparent">{{ example.strip() }}</li>
-                            {% endfor %}
-                        </ul>
+                    <hr>
+                    <h5><i class="bi bi-music-note-beamed"></i> Bass Line Patterns</h5>
+                    <ul class="list-group list-group-flush">
+                        {% for example in progression.bass_line_examples.replace('[', '').replace(']', '').replace('"',
+                        '').split(',') %}
+                        <li class="list-group-item bg-transparent">{{ example.strip() }}</li>
+                        {% endfor %}
+                    </ul>
                     {% endif %}
-                    
+
                     {% if progression.common_songs %}
-                        <hr>
-                        <h5><i class="bi bi-music-note-list"></i> Songs Using This Progression</h5>
-                        <p>{{ progression.common_songs }}</p>
+                    <hr>
+                    <h5><i class="bi bi-music-note-list"></i> Songs Using This Progression</h5>
+                    <p>{{ progression.common_songs }}</p>
                     {% endif %}
                 </div>
             </div>
         </div>
-        
+
         <div class="col-lg-4 mb-4">
             <div class="card mb-4">
                 <div class="card-header">
@@ -64,39 +66,39 @@
                             <span class="fs-4">{{ progression.numerals }}</span>
                         </li>
                         {% if progression.difficulty_level %}
-                            <li class="mb-3">
-                                <strong>Difficulty:</strong><br>
-                                <span class="fs-4">Level {{ progression.difficulty_level }}/10</span>
-                            </li>
+                        <li class="mb-3">
+                            <strong>Difficulty:</strong><br>
+                            <span class="fs-4">Level {{ progression.difficulty_level }}/10</span>
+                        </li>
                         {% endif %}
                         {% if progression.genre %}
-                            <li class="mb-3">
-                                <strong>Genre:</strong><br>
-                                <span class="badge bg-info">{{ progression.genre|capitalize }}</span>
-                            </li>
+                        <li class="mb-3">
+                            <strong>Genre:</strong><br>
+                            <span class="badge bg-info">{{ progression.genre|capitalize }}</span>
+                        </li>
                         {% endif %}
                     </ul>
                 </div>
             </div>
-            
+
             {% if related_songs %}
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-link"></i> Your Songs with This Progression</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <ul class="list-group list-group-flush">
-                            {% for song in related_songs %}
-                                <li class="list-group-item bg-transparent">
-                                    <strong>{{ song.title }}</strong>
-                                    {% if song.artist %}
-                                        <br><small class="text-secondary">{{ song.artist }}</small>
-                                    {% endif %}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-link"></i> Your Songs with This Progression</h5>
                 </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        {% for song in related_songs %}
+                        <li class="list-group-item bg-transparent">
+                            <strong>{{ song.title }}</strong>
+                            {% if song.artist %}
+                            <br><small class="text-secondary">{{ song.artist }}</small>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
             {% endif %}
         </div>
     </div>

@@ -10,7 +10,7 @@
             <p class="text-secondary">Test your knowledge of fretboard notes, music theory, chords, and more</p>
         </div>
     </div>
-    
+
     <div class="row mb-4">
         <!-- Stats -->
         <div class="col-md-4">
@@ -32,7 +32,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="row">
         <!-- Quiz Panel -->
         <div class="col-lg-8 mb-4">
@@ -41,18 +41,24 @@
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <h5 class="mb-0"><i class="bi bi-lightning"></i> Quiz</h5>
                         <div class="btn-group btn-group-sm flex-wrap">
-                            <button class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'fretboard' %}active{% endif %}" 
-                                    data-type="fretboard">Fretboard</button>
-                            <button class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'theory' %}active{% endif %}" 
-                                    data-type="theory">Theory</button>
-                            <button class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'chords' %}active{% endif %}" 
-                                    data-type="chords">Chords</button>
-                            <button class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'scales' %}active{% endif %}" 
-                                    data-type="scales">Scales</button>
-                            <button class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'rhythm' %}active{% endif %}" 
-                                    data-type="rhythm">Rhythm</button>
-                            <button class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'technique' %}active{% endif %}" 
-                                    data-type="technique">Technique</button>
+                            <button
+                                class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'fretboard' %}active{% endif %}"
+                                data-type="fretboard">Fretboard</button>
+                            <button
+                                class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'theory' %}active{% endif %}"
+                                data-type="theory">Theory</button>
+                            <button
+                                class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'chords' %}active{% endif %}"
+                                data-type="chords">Chords</button>
+                            <button
+                                class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'scales' %}active{% endif %}"
+                                data-type="scales">Scales</button>
+                            <button
+                                class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'rhythm' %}active{% endif %}"
+                                data-type="rhythm">Rhythm</button>
+                            <button
+                                class="btn btn-outline-primary quiz-type-btn {% if quiz_type == 'technique' %}active{% endif %}"
+                                data-type="technique">Technique</button>
                         </div>
                     </div>
                 </div>
@@ -62,26 +68,27 @@
                         <p class="text-secondary" id="quizQuestion">
                             Select a quiz type and test your knowledge
                         </p>
-                        
+
                         <!-- Fretboard Display -->
                         <div id="fretboardDisplay" class="d-none my-4">
                             <svg id="fretboardSvg" viewBox="0 0 500 120" class="w-100" style="max-width: 500px;">
                                 <!-- Fretboard will be drawn here -->
                             </svg>
                         </div>
-                        
+
                         <!-- Tab Display -->
                         <div id="tabDisplay" class="d-none my-4">
-                            <pre id="tabNotation" class="bg-dark text-light p-3 rounded text-start" style="font-family: monospace; font-size: 1.1em;"></pre>
+                            <pre id="tabNotation" class="bg-dark text-light p-3 rounded text-start"
+                                style="font-family: monospace; font-size: 1.1em;"></pre>
                         </div>
-                        
+
                         <!-- Answer Options -->
                         <div id="optionsArea" class="d-none mt-4">
                             <div class="d-flex flex-wrap justify-content-center gap-2" id="answerOptions">
                                 <!-- Options will be populated dynamically -->
                             </div>
                         </div>
-                        
+
                         <!-- Result Area -->
                         <div id="resultArea" class="d-none mt-4">
                             <div class="alert" id="resultMessage"></div>
@@ -99,7 +106,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Info Panel -->
         <div class="col-lg-4 mb-4">
             <!-- Quiz Type Stats -->
@@ -114,7 +121,8 @@
                             <span class="text-capitalize">{{ type_name }}</span>
                             <div>
                                 <span class="badge bg-secondary me-2">{{ type_stats.total }}</span>
-                                <span class="badge {% if type_stats.accuracy >= 70 %}bg-success{% elif type_stats.accuracy >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                <span
+                                    class="badge {% if type_stats.accuracy >= 70 %}bg-success{% elif type_stats.accuracy >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
                                     {{ "%.0f"|format(type_stats.accuracy) }}%
                                 </span>
                             </div>
@@ -123,7 +131,7 @@
                     </ul>
                 </div>
             </div>
-            
+
             <!-- Fretboard Reference -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -141,13 +149,33 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td>G (1st)</td><td>G</td><td>C</td><td>G</td></tr>
-                            <tr><td>D (2nd)</td><td>D</td><td>G</td><td>D</td></tr>
-                            <tr><td>A (3rd)</td><td>A</td><td>D</td><td>A</td></tr>
-                            <tr><td>E (4th)</td><td>E</td><td>A</td><td>E</td></tr>
+                            <tr>
+                                <td>G (1st)</td>
+                                <td>G</td>
+                                <td>C</td>
+                                <td>G</td>
+                            </tr>
+                            <tr>
+                                <td>D (2nd)</td>
+                                <td>D</td>
+                                <td>G</td>
+                                <td>D</td>
+                            </tr>
+                            <tr>
+                                <td>A (3rd)</td>
+                                <td>A</td>
+                                <td>D</td>
+                                <td>A</td>
+                            </tr>
+                            <tr>
+                                <td>E (4th)</td>
+                                <td>E</td>
+                                <td>A</td>
+                                <td>E</td>
+                            </tr>
                         </tbody>
                     </table>
-                    
+
                     <h6>Intervals</h6>
                     <small class="text-secondary">
                         1 fret = Half step (m2)<br>
@@ -156,7 +184,7 @@
                         7 frets = Perfect 5th<br>
                         12 frets = Octave
                     </small>
-                    
+
                     <h6 class="mt-3">Chord Formulas</h6>
                     <small class="text-secondary">
                         Major: 1-3-5<br>
@@ -167,7 +195,7 @@
                     </small>
                 </div>
             </div>
-            
+
             <!-- Recent Results -->
             <div class="card">
                 <div class="card-header">
@@ -175,18 +203,18 @@
                 </div>
                 <div class="card-body p-0">
                     {% if recent_results %}
-                        <ul class="list-group list-group-flush">
-                            {% for result in recent_results %}
-                                <li class="list-group-item bg-transparent d-flex justify-content-between">
-                                    <span class="text-capitalize">{{ result.quiz_type }}</span>
-                                    <span class="badge {% if result.correct %}bg-success{% else %}bg-danger{% endif %}">
-                                        {{ 'Correct' if result.correct else 'Wrong' }}
-                                    </span>
-                                </li>
-                            {% endfor %}
-                        </ul>
+                    <ul class="list-group list-group-flush">
+                        {% for result in recent_results %}
+                        <li class="list-group-item bg-transparent d-flex justify-content-between">
+                            <span class="text-capitalize">{{ result.quiz_type }}</span>
+                            <span class="badge {% if result.correct %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ 'Correct' if result.correct else 'Wrong' }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
                     {% else %}
-                        <p class="text-center text-secondary py-3 mb-0">No results yet</p>
+                    <p class="text-center text-secondary py-3 mb-0">No results yet</p>
                     {% endif %}
                 </div>
             </div>
@@ -197,222 +225,7 @@
 
 {% block extra_js %}
 <script>
-    let currentQuiz = null;
-    let quizType = '{{ quiz_type }}';
-    let startTime = null;
-    
-    // Note names for fretboard
-    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const openStrings = ['G', 'D', 'A', 'E'];  // String 1 to 4
-    
-    function getNoteAtFret(stringNum, fret) {
-        const openNote = openStrings[stringNum - 1];
-        const openIndex = notes.indexOf(openNote);
-        return notes[(openIndex + fret) % 12];
-    }
-    
-    function drawFretboard(highlightString, highlightFret) {
-        const svg = document.getElementById('fretboardSvg');
-        const fretCount = 12;
-        const stringCount = 4;
-        const startX = 40;
-        const startY = 20;
-        const fretWidth = 35;
-        const stringSpacing = 25;
-        
-        let html = '';
-        
-        // Draw nut
-        html += `<rect x="${startX}" y="${startY}" width="4" height="${(stringCount-1) * stringSpacing}" fill="#d4a574"/>`;
-        
-        // Draw frets
-        for (let f = 1; f <= fretCount; f++) {
-            const x = startX + f * fretWidth;
-            html += `<line x1="${x}" y1="${startY}" x2="${x}" y2="${startY + (stringCount-1) * stringSpacing}" stroke="#888" stroke-width="2"/>`;
-            
-            // Fret number
-            html += `<text x="${x - fretWidth/2}" y="${startY + (stringCount-1) * stringSpacing + 18}" text-anchor="middle" fill="#888" font-size="10">${f}</text>`;
-        }
-        
-        // Draw fret markers (dots)
-        const markerFrets = [3, 5, 7, 9, 12];
-        markerFrets.forEach(f => {
-            const x = startX + (f - 0.5) * fretWidth;
-            const y = startY + (stringCount-1) * stringSpacing / 2;
-            if (f === 12) {
-                html += `<circle cx="${x}" cy="${y - 12}" r="4" fill="#555"/>`;
-                html += `<circle cx="${x}" cy="${y + 12}" r="4" fill="#555"/>`;
-            } else {
-                html += `<circle cx="${x}" cy="${y}" r="4" fill="#555"/>`;
-            }
-        });
-        
-        // Draw strings
-        for (let s = 0; s < stringCount; s++) {
-            const y = startY + s * stringSpacing;
-            const thickness = 1 + s * 0.5;
-            html += `<line x1="${startX}" y1="${y}" x2="${startX + fretCount * fretWidth}" y2="${y}" stroke="#ccc" stroke-width="${thickness}"/>`;
-            
-            // String label
-            html += `<text x="${startX - 20}" y="${y + 4}" text-anchor="middle" fill="#aaa" font-size="12">${openStrings[s]}</text>`;
-        }
-        
-        // Highlight the target position
-        if (highlightString && highlightFret !== undefined) {
-            const x = highlightFret === 0 ? startX - 10 : startX + (highlightFret - 0.5) * fretWidth;
-            const y = startY + (highlightString - 1) * stringSpacing;
-            html += `<circle cx="${x}" cy="${y}" r="10" fill="#0d6efd" stroke="#fff" stroke-width="2"/>`;
-            html += `<text x="${x}" y="${y + 4}" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">?</text>`;
-        }
-        
-        svg.innerHTML = html;
-    }
-    
-    function drawTab(stringNum, fret) {
-        const tabDiv = document.getElementById('tabNotation');
-        let lines = ['G|', 'D|', 'A|', 'E|'];
-        
-        const dashCount = 5;
-        for (let i = 0; i < 4; i++) {
-            for (let j = 0; j < dashCount; j++) {
-                if (j === Math.floor(dashCount/2) && i === stringNum - 1) {
-                    lines[i] += fret.toString().padStart(2, '-');
-                } else {
-                    lines[i] += '--';
-                }
-            }
-            lines[i] += '|';
-        }
-        
-        tabDiv.textContent = lines.join('\n');
-    }
-    
-    document.getElementById('newQuestionBtn').addEventListener('click', loadNewQuestion);
-    
-    document.querySelectorAll('.quiz-type-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.quiz-type-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            quizType = this.dataset.type;
-            loadNewQuestion();
-        });
-    });
-    
-    function loadNewQuestion() {
-        fetch(`/quiz/question?type=${quizType}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    document.getElementById('quizTitle').textContent = 'No questions available';
-                    document.getElementById('quizQuestion').textContent = 'Try selecting a different quiz type.';
-                    document.getElementById('optionsArea').classList.add('d-none');
-                    document.getElementById('fretboardDisplay').classList.add('d-none');
-                    document.getElementById('tabDisplay').classList.add('d-none');
-                    currentQuiz = null;
-                    return;
-                }
-                
-                currentQuiz = data;
-                startTime = Date.now();
-                
-                // Update level display
-                if (data.difficulty) {
-                    document.getElementById('currentLevel').textContent = data.difficulty;
-                }
-                
-                document.getElementById('quizTitle').textContent = data.title;
-                document.getElementById('quizQuestion').textContent = data.question;
-                
-                // Handle fretboard display
-                if (data.type === 'fretboard' && data.string_number && data.fret_number !== null) {
-                    document.getElementById('fretboardDisplay').classList.remove('d-none');
-                    document.getElementById('tabDisplay').classList.remove('d-none');
-                    drawFretboard(data.string_number, data.fret_number);
-                    drawTab(data.string_number, data.fret_number);
-                } else {
-                    document.getElementById('fretboardDisplay').classList.add('d-none');
-                    document.getElementById('tabDisplay').classList.add('d-none');
-                }
-                
-                // Parse options
-                let options;
-                try {
-                    options = typeof data.options === 'string' ? JSON.parse(data.options) : data.options;
-                } catch(e) {
-                    console.error('Error parsing options:', e);
-                    options = [];
-                }
-                
-                // Create option buttons
-                const optionsArea = document.getElementById('answerOptions');
-                optionsArea.innerHTML = '';
-                
-                options.forEach(opt => {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn btn-outline-primary btn-lg m-1';
-                    btn.textContent = opt;
-                    btn.onclick = () => submitAnswer(opt);
-                    optionsArea.appendChild(btn);
-                });
-                
-                document.getElementById('optionsArea').classList.remove('d-none');
-                document.getElementById('resultArea').classList.add('d-none');
-            })
-            .catch(err => {
-                console.error('Error loading question:', err);
-                document.getElementById('quizTitle').textContent = 'Error loading question';
-                document.getElementById('quizQuestion').textContent = 'Please try again.';
-            });
-    }
-    
-    function submitAnswer(answer) {
-        if (!currentQuiz) return;
-        
-        const responseTime = startTime ? Date.now() - startTime : 0;
-        
-        fetch('/quiz/submit', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                quiz_id: currentQuiz.id,
-                answer: answer,
-                response_time: responseTime
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            const resultArea = document.getElementById('resultArea');
-            const resultMessage = document.getElementById('resultMessage');
-            const explanation = document.getElementById('explanation');
-            
-            resultArea.classList.remove('d-none');
-            
-            if (data.correct) {
-                resultMessage.className = 'alert alert-success';
-                resultMessage.innerHTML = `<i class="bi bi-check-circle-fill"></i> Correct! The answer is <strong>${data.correct_answer}</strong>`;
-            } else {
-                resultMessage.className = 'alert alert-danger';
-                resultMessage.innerHTML = `<i class="bi bi-x-circle-fill"></i> Incorrect. The answer was: <strong>${data.correct_answer}</strong>`;
-            }
-            
-            if (data.explanation) {
-                explanation.textContent = data.explanation;
-                explanation.classList.remove('d-none');
-            } else {
-                explanation.classList.add('d-none');
-            }
-            
-            // Auto-load next question after 3 seconds
-            setTimeout(loadNewQuestion, 3000);
-        })
-        .catch(err => {
-            console.error('Error submitting answer:', err);
-        });
-    }
-    
-    // Load initial question when page loads
-    loadNewQuestion();
+    window.initialQuizType = '{{ quiz_type }}';
 </script>
+<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
 {% endblock %}

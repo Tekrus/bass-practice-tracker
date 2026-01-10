@@ -1,0 +1,24 @@
+{% macro category_badge(category) %}
+<span class="badge badge-category badge-{{ category }}">
+    {{ category|capitalize }}
+</span>
+{% endmacro %}
+
+{% macro star_rating(rating, max_rating=5, extra_class='', extra_style='') %}
+<div class="mastery-stars {{ extra_class }}" {% if extra_style %}style="{{ extra_style }}" {% endif %}>
+    {% for i in range(max_rating) %}
+    <i class="bi bi-star{% if i < rating %}-fill{% endif %}"></i>
+    {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro progress_bar(value, max_value=100, color_class=none, extra_class='', no_wrapper=False, id=none) %}
+{% if not no_wrapper %}<div class="progress" style="height: 10px;">{% endif %}
+    <div class="progress-bar {{ extra_class }} {% if color_class %}bg-{{ color_class }}{% endif %}" {% if id
+        %}id="{{ id }}" {% endif %} role="progressbar"
+        style="width: {{ (value / max_value * 100)|round(1) if max_value > 0 else 0 }}%" aria-valuenow="{{ value }}"
+        aria-valuemin="0" aria-valuemax="{{ max_value }}">
+    </div>
+    {% if not no_wrapper %}
+</div>{% endif %}
+{% endmacro %}
