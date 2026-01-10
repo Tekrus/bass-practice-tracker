@@ -367,8 +367,8 @@
                     <small class="text-muted">Threshold: <span id="threshold-value">Auto</span></small>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">System Latency</label>
-                    <span id="calibration-offset-display" class="badge bg-secondary">Not calibrated</span>
+                    <label class="form-label">Audio Latency</label>
+                    <span id="calibration-offset-display" class="badge bg-secondary">50ms</span>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">&nbsp;</label>
@@ -584,15 +584,15 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-bullseye"></i> Audio Calibration</h5>
+                <h5 class="modal-title"><i class="bi bi-bullseye"></i> Audio Setup</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" id="calibration-close-btn"></button>
             </div>
             <div class="modal-body">
-                
+
                 <!-- Step 1: Threshold Calibration -->
                 <div id="calibration-step-threshold" class="calibration-step text-center">
-                    <h5 class="mb-4">Step 1: Audio Setup</h5>
-                    
+                    <h5 class="mb-4">Set Input Threshold</h5>
+
                     <!-- Sub-step 1a: Ambient noise -->
                     <div id="threshold-ambient">
                         <p class="text-secondary mb-3">Sampling ambient noise...</p>
@@ -600,11 +600,11 @@
                             <i class="bi bi-volume-mute"></i> <strong>Stay quiet</strong> for a moment
                         </div>
                         <div class="progress my-4" style="height: 8px;">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
                                  id="ambient-progress" style="width: 0%"></div>
                         </div>
                     </div>
-                    
+
                     <!-- Sub-step 1b: Signal confirmation -->
                     <div id="threshold-confirm" style="display: none;">
                         <p class="text-secondary mb-3">Now confirm your input</p>
@@ -622,39 +622,12 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Step 2: Latency Measurement -->
-                <div id="calibration-step-latency" class="calibration-step text-center" style="display: none;">
-                    <h5 class="mb-4">Step 2: Latency Measurement</h5>
-                    
-                    <div class="alert alert-warning mb-4">
-                        <i class="bi bi-lightning"></i>
-                        <strong>Reaction test:</strong> Play <strong>immediately</strong> when you hear the beep!
-                        <br><small class="text-muted">This measures audio delay, not your timing skill.</small>
-                    </div>
-                    
-                    <div class="calibration-beat" id="latency-beat">
-                        <i class="bi bi-volume-up"></i>
-                    </div>
-                    
-                    <div class="calibration-dots-container" id="latency-dots"></div>
-                    
-                    <p class="text-muted mt-3" id="latency-status">Get ready...</p>
-                </div>
-                
-                <!-- Step 3: Results -->
+
+                <!-- Results -->
                 <div id="calibration-step-results" class="calibration-step text-center" style="display: none;">
-                    <h5 class="mb-4"><i class="bi bi-check-circle text-success"></i> Calibration Complete!</h5>
-                    
+                    <h5 class="mb-4"><i class="bi bi-check-circle text-success"></i> Setup Complete!</h5>
+
                     <div class="row mb-4">
-                        <div class="col-6">
-                            <div class="card">
-                                <div class="card-body py-3">
-                                    <div class="h3 mb-0" id="result-latency">0ms</div>
-                                    <small class="text-muted">System Latency</small>
-                                </div>
-                            </div>
-                        </div>
                         <div class="col-6">
                             <div class="card">
                                 <div class="card-body py-3">
@@ -663,23 +636,31 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="col-6">
+                            <div class="card">
+                                <div class="card-body py-3">
+                                    <div class="h3 mb-0" id="result-latency">50ms</div>
+                                    <small class="text-muted">Latency (est.)</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    
+
                     <p class="text-muted mb-4">
                         <i class="bi bi-info-circle"></i>
                         Settings saved automatically.
                     </p>
-                    
+
                     <div class="d-flex gap-2 justify-content-center">
                         <button class="btn btn-outline-secondary" id="recalibrate-btn">
                             <i class="bi bi-arrow-repeat"></i> Redo
                         </button>
                         <button class="btn btn-primary" id="apply-calibration-btn">
-                            <i class="bi bi-check-lg"></i> Apply & Close
+                            <i class="bi bi-check-lg"></i> Done
                         </button>
                     </div>
                 </div>
-                
+
             </div>
         </div>
     </div>
@@ -780,7 +761,9 @@ class AudioInputHandler {
         this.noiseFloor = 0;
         this.onNoteDetected = null;
         this.lastTriggerTime = 0;
-        this.minTriggerInterval = 50;
+        this.minTriggerInterval = 200;  // Minimum time between notes
+        this.isTriggered = false;  // Gate state - true when above threshold
+        this.releaseThreshold = 0;  // Will be set to threshold * 0.5
     }
     
     async connect(deviceId = null) {
@@ -793,8 +776,8 @@ class AudioInputHandler {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
             this.analyser = this.audioContext.createAnalyser();
-            this.analyser.fftSize = 2048;
-            this.analyser.smoothingTimeConstant = 0.3;
+            this.analyser.fftSize = 512;
+            this.analyser.smoothingTimeConstant = 0.2;
             
             const source = this.audioContext.createMediaStreamSource(this.mediaStream);
             source.connect(this.analyser);
@@ -839,22 +822,22 @@ class AudioInputHandler {
         return new Promise((resolve) => {
             const samples = [];
             const sampleDuration = 1500;
-            const startTime = performance.now();
-            
+            const startTime = this.audioContext.currentTime * 1000;
+
             const sample = () => {
                 if (!this.isConnected) {
                     resolve(false);
                     return;
                 }
-                
+
                 const volume = this.getCurrentVolume();
                 samples.push(volume);
-                
-                const elapsed = performance.now() - startTime;
+
+                const elapsed = this.audioContext.currentTime * 1000 - startTime;
                 if (onProgress) {
                     onProgress(Math.min(100, (elapsed / sampleDuration) * 100));
                 }
-                
+
                 if (elapsed < sampleDuration) {
                     requestAnimationFrame(sample);
                 } else {
@@ -862,49 +845,70 @@ class AudioInputHandler {
                     samples.sort((a, b) => a - b);
                     const p95Index = Math.floor(samples.length * 0.95);
                     this.noiseFloor = samples[p95Index];
-                    
-                    // Threshold with margin above noise
-                    this.threshold = Math.min(80, Math.max(10, this.noiseFloor + 15));
+
+                    // Threshold with margin above noise (adaptive)
+                    this.threshold = Math.min(80, Math.max(15, this.noiseFloor + 12));
+                    this.releaseThreshold = this.threshold * 0.5;  // 50% of threshold for release
                     resolve(true);
                 }
             };
-            
+
             sample();
         });
+    }
+
+    updateThresholdAdaptive(currentVolume) {
+        const decayFactor = 0.98;
+        const attackFactor = 0.1;
+        if (currentVolume > this.threshold) {
+            this.threshold = this.threshold * (1 - attackFactor) + currentVolume * attackFactor;
+        } else {
+            this.threshold = this.threshold * decayFactor + this.noiseFloor * (1 - decayFactor);
+        }
     }
     
     startListening() {
         if (!this.isConnected) return;
-        
+
+        this.releaseThreshold = this.threshold * 0.5;
+
         const checkLevel = () => {
             if (!this.isConnected) return;
-            
+
             const volume = this.getCurrentVolume();
-            
+
             // Update volume meter
             const meterFill = document.getElementById('volume-meter-fill');
             if (meterFill) {
                 meterFill.style.width = Math.min(100, volume * 2) + '%';
             }
-            
+
             // Update indicator
             const indicator = document.getElementById('audio-status');
             if (indicator) {
                 indicator.classList.toggle('active', volume > this.threshold);
             }
-            
-            // Trigger detection
-            const now = performance.now();
-            if (volume > this.threshold && (now - this.lastTriggerTime) > this.minTriggerInterval) {
-                this.lastTriggerTime = now;
-                if (this.onNoteDetected) {
-                    this.onNoteDetected(now);
+
+            // Gate-based trigger detection
+            const now = this.audioContext.currentTime * 1000;
+
+            if (volume > this.threshold && !this.isTriggered) {
+                // Signal rose above threshold - trigger!
+                if ((now - this.lastTriggerTime) > this.minTriggerInterval) {
+                    this.isTriggered = true;
+                    this.lastTriggerTime = now;
+                    if (this.onNoteDetected) {
+                        this.onNoteDetected(now);
+                    }
                 }
+            } else if (volume < this.releaseThreshold && this.isTriggered) {
+                // Signal dropped below release threshold - reset gate
+                this.isTriggered = false;
             }
-            
+
             requestAnimationFrame(checkLevel);
         };
-        
+
         checkLevel();
     }
     
@@ -919,34 +923,102 @@ class AudioInputHandler {
 }
 
 // =============================================================================
-// Metronome
+// Metronome with Lookahead Scheduling
 // =============================================================================
 class Metronome {
     constructor() {
         this.audioContext = null;
+        this.nextNoteTime = 0;
+        this.lookahead = 25;
+        this.scheduleAheadTime = 0.1;
+        this.timerID = null;
+        this.isRunning = false;
+        this.currentBeat = 0;
+        this.onBeat = null;
     }
-    
+
     init() {
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
-    
-    playClick(time, isAccent = false) {
+
+    start(tempo, onBeat = null) {
+        if (this.isRunning) this.stop();
+
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+
+        this.onBeat = onBeat;
+        this.currentBeat = 0;
+        this.nextNoteTime = this.audioContext.currentTime;
+        this.isRunning = true;
+        this.scheduler();
+    }
+
+    stop() {
+        this.isRunning = false;
+        if (this.timerID) {
+            clearTimeout(this.timerID);
+            this.timerID = null;
+        }
+    }
+
+    getCurrentTime() {
+        return this.audioContext ? this.audioContext.currentTime * 1000 : 0;
+    }
+
+    scheduler() {
+        if (!this.isRunning) return;
+
+        while (this.nextNoteTime < this.audioContext.currentTime + this.scheduleAheadTime) {
+            this.scheduleNote(this.nextNoteTime, this.currentBeat);
+            this.nextNoteTime += 60 / this.tempo;
+            this.currentBeat++;
+        }
+
+        this.timerID = setTimeout(() => this.scheduler(), this.lookahead);
+    }
+
+    setTempo(tempo) {
+        this.tempo = tempo;
+    }
+
+    scheduleNote(time, beat) {
         const osc = this.audioContext.createOscillator();
         const gain = this.audioContext.createGain();
-        
+
         osc.connect(gain);
         gain.connect(this.audioContext.destination);
-        
+
+        const isAccent = beat % 4 === 0;
         osc.frequency.value = isAccent ? 1000 : 800;
         gain.gain.value = isAccent ? 0.3 : 0.2;
-        
+
         osc.start(time);
         gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
         osc.stop(time + 0.05);
+
+        if (this.onBeat) {
+            const delay = (time - this.audioContext.currentTime) * 1000;
+            if (delay > 0) {
+                setTimeout(() => this.onBeat(beat), Math.min(delay, 50));
+            }
+        }
     }
-    
-    getCurrentTime() {
-        return this.audioContext ? this.audioContext.currentTime * 1000 : 0;
+
+    playClick(time, isAccent = false) {
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        osc.frequency.value = isAccent ? 1000 : 800;
+        gain.gain.value = isAccent ? 0.3 : 0.2;
+
+        osc.start(time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        osc.stop(time + 0.05);
     }
 }
 
@@ -957,101 +1029,86 @@ class CalibrationController {
     constructor(audioHandler, metronome) {
         this.audioHandler = audioHandler;
         this.metronome = metronome;
-        
+
         // Calibration state
         this.isCalibrating = false;
         this.currentStep = null;
-        
+
         // Threshold calibration
         this.signalConfirmCount = 0;
         this.requiredConfirms = 3;
-        
-        // Latency calibration
-        this.latencyClicks = 6;
-        this.currentClick = 0;
-        this.beepTime = 0;
-        this.reactionTimes = [];
-        this.reactionTimeout = null;
-        
+
         // Results
-        this.systemLatency = 0;
+        this.systemLatency = 50;  // Default latency estimate (ms)
         this.calibrationOffset = 0;
-        
-        // Human reaction baseline (research: ~140-180ms for audio stimulus)
-        this.humanReactionBaseline = 140;
-        
+
         this.loadCalibration();
     }
-    
+
     loadCalibration() {
         try {
             const savedLatency = localStorage.getItem('timing_system_latency');
             const savedThreshold = localStorage.getItem('timing_threshold');
-            
+
             if (savedLatency !== null) {
                 this.systemLatency = parseFloat(savedLatency);
-                this.calibrationOffset = this.systemLatency;
             }
             if (savedThreshold !== null) {
                 this.audioHandler.threshold = parseFloat(savedThreshold);
+                this.audioHandler.releaseThreshold = this.audioHandler.threshold * 0.5;
             }
             this.updateOffsetDisplay();
         } catch (e) {
             console.error('Error loading calibration:', e);
         }
     }
-    
+
     saveCalibration() {
         try {
             localStorage.setItem('timing_system_latency', this.systemLatency.toString());
             localStorage.setItem('timing_threshold', this.audioHandler.threshold.toString());
             this.calibrationOffset = this.systemLatency;
+            this.audioHandler.releaseThreshold = this.audioHandler.threshold * 0.5;
             this.updateOffsetDisplay();
         } catch (e) {
             console.error('Error saving calibration:', e);
         }
     }
-    
+
     updateOffsetDisplay() {
         const display = document.getElementById('calibration-offset-display');
         if (display) {
-            if (this.systemLatency > 0) {
-                display.textContent = `${this.systemLatency}ms`;
-                display.className = 'badge bg-success';
-            } else {
-                display.textContent = 'Not calibrated';
-                display.className = 'badge bg-secondary';
-            }
+            display.textContent = `${this.systemLatency}ms`;
+            display.className = 'badge bg-success';
         }
-        
+
         const thresholdDisplay = document.getElementById('threshold-value');
         if (thresholdDisplay) {
             thresholdDisplay.textContent = Math.round(this.audioHandler.threshold);
         }
     }
-    
+
     getOffset() {
         return this.calibrationOffset;
     }
-    
-    // Start the full calibration flow
+
+    // Start calibration flow
     start() {
         this.isCalibrating = true;
+        this.currentStep = null;
         this.reset();
         this.startThresholdCalibration();
     }
-    
+
     reset() {
-        // Reset UI to initial state
+        if (this.isCalibrating === false && this.currentStep === 'results') {
+            return;
+        }
         document.getElementById('calibration-step-threshold').style.display = 'block';
-        document.getElementById('calibration-step-latency').style.display = 'none';
-        document.getElementById('calibration-step-results').style.display = 'none';
-        
         document.getElementById('threshold-ambient').style.display = 'block';
         document.getElementById('threshold-confirm').style.display = 'none';
         document.getElementById('ambient-progress').style.width = '0%';
-        
-        // Reset dots
+
         for (let i = 0; i < 3; i++) {
             const dot = document.getElementById(`thresh-dot-${i}`);
             if (dot) {
@@ -1059,193 +1116,80 @@ class CalibrationController {
             }
         }
     }
-    
+
     // Step 1a: Sample ambient noise
     async startThresholdCalibration() {
         this.currentStep = 'threshold-ambient';
         const progressBar = document.getElementById('ambient-progress');
-        
+
         const success = await this.audioHandler.calibrateThreshold((progress) => {
             progressBar.style.width = progress + '%';
         });
-        
+
         if (success && this.isCalibrating) {
             document.getElementById('threshold-ambient').style.display = 'none';
             document.getElementById('threshold-confirm').style.display = 'block';
             this.startSignalConfirmation();
         }
     }
-    
+
     // Step 1b: Confirm signal detection
     startSignalConfirmation() {
         this.currentStep = 'threshold-confirm';
         this.signalConfirmCount = 0;
-        
+
         const indicator = document.getElementById('threshold-indicator');
         const status = document.getElementById('threshold-status');
-        
+
         document.getElementById('thresh-dot-0').classList.add('current');
-        
+
         this.audioHandler.onNoteDetected = () => {
             if (!this.isCalibrating || this.currentStep !== 'threshold-confirm') return;
-            
-            // Visual feedback
+
             indicator.classList.add('active');
             setTimeout(() => indicator.classList.remove('active'), 200);
-            
-            // Update dots
+
             const currentDot = document.getElementById(`thresh-dot-${this.signalConfirmCount}`);
             if (currentDot) {
                 currentDot.classList.remove('current');
                 currentDot.classList.add('complete');
             }
-            
+
             this.signalConfirmCount++;
-            
+
             const nextDot = document.getElementById(`thresh-dot-${this.signalConfirmCount}`);
             if (nextDot) nextDot.classList.add('current');
-            
+
             if (this.signalConfirmCount >= this.requiredConfirms) {
                 this.audioHandler.onNoteDetected = null;
-                status.innerHTML = '<i class="bi bi-check-circle text-success"></i> Input confirmed!';
-                setTimeout(() => this.startLatencyCalibration(), 1000);
+                this.completeCalibration();
             } else {
                 status.textContent = `Detected ${this.signalConfirmCount}/${this.requiredConfirms}...`;
             }
         };
-        
+
         status.textContent = 'Play some notes...';
     }
-    
-    // Step 2: Measure system latency
-    startLatencyCalibration() {
-        this.currentStep = 'latency';
-        
-        document.getElementById('calibration-step-threshold').style.display = 'none';
-        document.getElementById('calibration-step-latency').style.display = 'block';
-        
-        this.currentClick = 0;
-        this.reactionTimes = [];
-        
-        const dotsContainer = document.getElementById('latency-dots');
-        dotsContainer.innerHTML = '';
-        for (let i = 0; i < this.latencyClicks; i++) {
-            const dot = document.createElement('div');
-            dot.className = 'calibration-dot';
-            dot.id = `latency-dot-${i}`;
-            dotsContainer.appendChild(dot);
-        }
-        
-        this.audioHandler.onNoteDetected = (time) => {
-            if (this.currentStep === 'latency') this.recordReaction(time);
-        };
-        
-        if (this.metronome.audioContext?.state === 'suspended') {
-            this.metronome.audioContext.resume();
-        }
-        
-        setTimeout(() => this.playLatencyBeep(), 1000);
-    }
-    
-    playLatencyBeep() {
-        if (!this.isCalibrating || this.currentStep !== 'latency') return;
-        
-        if (this.currentClick >= this.latencyClicks) {
-            this.completeCalibration();
-            return;
-        }
-        
-        const beat = document.getElementById('latency-beat');
-        const status = document.getElementById('latency-status');
-        const dot = document.getElementById(`latency-dot-${this.currentClick}`);
-        
-        if (dot) dot.classList.add('current');
-        
-        const randomDelay = 1000 + Math.random() * 1500;
-        status.textContent = 'Wait for it...';
-        
-        setTimeout(() => {
-            if (!this.isCalibrating || this.currentStep !== 'latency') return;
-            
-            this.beepTime = performance.now();
-            this.metronome.playClick(this.metronome.audioContext.currentTime, true);
-            
-            beat.classList.add('flash');
-            setTimeout(() => beat.classList.remove('flash'), 100);
-            
-            status.textContent = 'NOW!';
-            
-            this.reactionTimeout = setTimeout(() => {
-                if (this.reactionTimes.length <= this.currentClick) {
-                    this.reactionTimes.push(null);
-                    if (dot) dot.classList.remove('current');
-                    this.currentClick++;
-                    this.playLatencyBeep();
-                }
-            }, 1000);
-            
-        }, randomDelay);
-    }
-    
-    recordReaction(hitTime) {
-        if (this.reactionTimes.length > this.currentClick) return;
-        
-        clearTimeout(this.reactionTimeout);
-        
-        const reactionTime = hitTime - this.beepTime;
-        this.reactionTimes.push(reactionTime);
-        
-        const beat = document.getElementById('latency-beat');
-        const dot = document.getElementById(`latency-dot-${this.currentClick}`);
-        
-        beat.classList.add('hit');
-        setTimeout(() => beat.classList.remove('hit'), 200);
-        
-        if (dot) {
-            dot.classList.remove('current');
-            dot.classList.add('complete');
-        }
-        
-        this.currentClick++;
-        setTimeout(() => this.playLatencyBeep(), 600);
-    }
-    
+
     completeCalibration() {
         this.currentStep = 'results';
+        this.isCalibrating = false;
         this.audioHandler.onNoteDetected = null;
-        
-        const validReactions = this.reactionTimes.filter(r => r !== null && r > 50 && r < 500);
-        
-        if (validReactions.length < 3) {
-            document.getElementById('latency-status').textContent = 'Not enough responses. Retrying...';
-            setTimeout(() => {
-                this.reset();
-                this.startThresholdCalibration();
-            }, 2000);
-            return;
-        }
-        
-        validReactions.sort((a, b) => a - b);
-        const fastestThree = validReactions.slice(0, 3);
-        const avgFastest = fastestThree.reduce((a, b) => a + b, 0) / fastestThree.length;
-        
-        this.systemLatency = Math.round(Math.max(0, Math.min(100, avgFastest - this.humanReactionBaseline)));
-        
-        document.getElementById('calibration-step-latency').style.display = 'none';
+
+        document.getElementById('calibration-step-threshold').style.display = 'none';
         document.getElementById('calibration-step-results').style.display = 'block';
-        
-        document.getElementById('result-latency').textContent = `${this.systemLatency}ms`;
+
+        document.getElementById('result-latency').textContent = `${this.systemLatency}ms (estimated)`;
         document.getElementById('result-threshold').textContent = Math.round(this.audioHandler.threshold);
     }
-    
+
     apply() {
         this.saveCalibration();
     }
-    
+
     cancel() {
         this.isCalibrating = false;
         this.currentStep = null;
-        clearTimeout(this.reactionTimeout);
         this.audioHandler.onNoteDetected = null;
     }
 }
@@ -1373,7 +1317,9 @@ class TimingGame {
         });
         
         document.getElementById('calibration-modal').addEventListener('hidden.bs.modal', () => {
-            this.calibration.cancel();
+            if (this.calibration.isCalibrating) {
+                this.calibration.cancel();
+            }
         });
         
         // Game mode selection
@@ -1419,7 +1365,7 @@ class TimingGame {
         document.addEventListener('keydown', (e) => {
             if (this.isPlaying && e.code === 'Space') {
                 e.preventDefault();
-                this.registerHit(performance.now() - this.gameStartTime);
+                this.registerHit(this.metronome.getCurrentTime() - this.gameStartTime);
             }
         });
     }
@@ -1484,22 +1430,26 @@ class TimingGame {
             const countdownScreen = document.getElementById('countdown-screen');
             const gameScreen = document.getElementById('game-screen');
             const countdownNumber = document.getElementById('countdown-number');
-            
+
             countdownScreen.style.display = 'block';
             gameScreen.style.display = 'none';
-            
+
             document.getElementById('countdown-tempo').textContent = this.tempo;
-            
+
             const beatInterval = 60000 / this.tempo;
             let beat = 0;
             const totalBeats = 4;
-            
+
+            // Use audio context time for precise countdown scheduling
+            const startTime = this.metronome.audioContext.currentTime;
+
             const playCountBeat = () => {
                 beat++;
-                
+
                 if (beat <= totalBeats) {
                     countdownNumber.textContent = totalBeats - beat + 1;
-                    this.metronome.playClick(this.metronome.audioContext.currentTime, beat === 1);
+                    const clickTime = startTime + (beat * beatInterval / 1000);
+                    this.metronome.playClick(clickTime, beat === 1);
                     setTimeout(playCountBeat, beatInterval);
                 } else {
                     countdownScreen.style.display = 'none';
@@ -1507,7 +1457,7 @@ class TimingGame {
                     resolve();
                 }
             };
-            
+
             playCountBeat();
         });
     }
@@ -1519,25 +1469,91 @@ class TimingGame {
         this.bestStreak = 0;
         this.notesHit = 0;
         this.hits = [];
-        
+
         // Lead time: 2 beats
         const beatDuration = 60000 / this.tempo;
         this.leadTime = beatDuration * 2;
         this.adjustedBeatTimes = this.beatTimes.map(t => t + this.leadTime);
-        
-        this.gameStartTime = performance.now();
-        
+
+        // Use audio context time for precise game timing
+        this.gameStartTime = this.metronome.getCurrentTime();
+
         this.createNotes();
-        setTimeout(() => this.startMetronome(), this.leadTime);
+
+        // Start metronome with lookahead scheduling
+        this.metronome.setTempo(this.tempo);
+        this.metronome.start(this.tempo);
+
         this.animationLoop();
     }
-    
+
+    // Get precise current time using audio context
+    getCurrentGameTime() {
+        return this.metronome.getCurrentTime() - this.gameStartTime;
+    }
+
+    animationLoop() {
+        if (!this.isPlaying) return;
+
+        const currentTime = this.getCurrentGameTime();
+        const beatTimes = this.adjustedBeatTimes;
+        const totalDuration = beatTimes[beatTimes.length - 1] + 1000;
+
+        // Progress
+        document.getElementById('game-progress').style.width = Math.min(100, (currentTime / totalDuration) * 100) + '%';
+
+        // Time remaining
+        const remaining = Math.max(0, totalDuration - currentTime) / 1000;
+        document.getElementById('time-remaining').textContent =
+            `${Math.floor(remaining / 60)}:${Math.floor(remaining % 60).toString().padStart(2, '0')}`;
+
+        // Animate notes
+        const approachTime = 2000;
+        const MISS_GRACE_PERIOD = 100;
+
+        this.noteElements.forEach((note, index) => {
+            const noteTime = beatTimes[index];
+            const timeUntilNote = noteTime - currentTime;
+
+            // Position
+            if (timeUntilNote > approachTime) {
+                note.style.display = 'none';
+            } else if (timeUntilNote > -this.detectionWindow - 200) {
+                note.style.display = 'flex';
+                note.style.left = (50 + (timeUntilNote / approachTime) * 50) + '%';
+            } else {
+                note.style.display = 'none';
+            }
+
+            // Miss detection with grace period
+            if (timeUntilNote < -this.detectionWindow && !this.isNoteProcessed(note)) {
+                if (!note.dataset.pendingMissAt) {
+                    note.dataset.pendingMissAt = this.metronome.getCurrentTime().toString();
+                }
+
+                const pendingTime = parseFloat(note.dataset.pendingMissAt);
+                if (this.metronome.getCurrentTime() - pendingTime > MISS_GRACE_PERIOD && !this.isNoteProcessed(note)) {
+                    note.classList.add('missed');
+                    this.registerMiss(index);
+                }
+            }
+        });
+
+        // Game complete check
+        if (currentTime >= totalDuration) {
+            this.endGame();
+            return;
+        }
+
+        requestAnimationFrame(() => this.animationLoop());
+    }
+
     createNotes() {
         const beatTrack = document.getElementById('beat-track');
         beatTrack.querySelectorAll('.beat-note').forEach(n => n.remove());
-        
+
         this.noteElements = [];
-        
+
         this.beatTimes.forEach((time, index) => {
             const note = document.createElement('div');
             note.className = 'beat-note';
@@ -1548,78 +1564,12 @@ class TimingGame {
             this.noteElements.push(note);
         });
     }
-    
-    startMetronome() {
-        const beatInterval = 60000 / this.tempo;
-        let beatIndex = 0;
-        
-        const playBeat = () => {
-            if (!this.isPlaying) return;
-            
-            this.metronome.playClick(this.metronome.audioContext.currentTime, beatIndex % 4 === 0);
-            beatIndex++;
-            setTimeout(playBeat, beatInterval);
-        };
-        
-        playBeat();
+
+    stopGame() {
+        this.isPlaying = false;
+        this.metronome.stop();
     }
-    
-    animationLoop() {
-        if (!this.isPlaying) return;
-        
-        const currentTime = performance.now() - this.gameStartTime;
-        const beatTimes = this.adjustedBeatTimes;
-        const totalDuration = beatTimes[beatTimes.length - 1] + 1000;
-        
-        // Progress
-        document.getElementById('game-progress').style.width = Math.min(100, (currentTime / totalDuration) * 100) + '%';
-        
-        // Time remaining
-        const remaining = Math.max(0, totalDuration - currentTime) / 1000;
-        document.getElementById('time-remaining').textContent = 
-            `${Math.floor(remaining / 60)}:${Math.floor(remaining % 60).toString().padStart(2, '0')}`;
-        
-        // Animate notes
-        const approachTime = 2000;
-        const MISS_GRACE_PERIOD = 150;
-        
-        this.noteElements.forEach((note, index) => {
-            const noteTime = beatTimes[index];
-            const timeUntilNote = noteTime - currentTime;
-            
-            // Position
-            if (timeUntilNote > approachTime) {
-                note.style.display = 'none';
-            } else if (timeUntilNote > -this.detectionWindow - 200) {
-                note.style.display = 'flex';
-                note.style.left = (50 + (timeUntilNote / approachTime) * 50) + '%';
-            } else {
-                note.style.display = 'none';
-            }
-            
-            // Miss detection with grace period
-            if (timeUntilNote < -this.detectionWindow && !this.isNoteProcessed(note)) {
-                if (!note.dataset.pendingMissAt) {
-                    note.dataset.pendingMissAt = performance.now().toString();
-                }
-                
-                const pendingTime = parseFloat(note.dataset.pendingMissAt);
-                if (performance.now() - pendingTime > MISS_GRACE_PERIOD && !this.isNoteProcessed(note)) {
-                    note.classList.add('missed');
-                    this.registerMiss(index);
-                }
-            }
-        });
-        
-        // Game complete check
-        if (currentTime >= totalDuration) {
-            this.endGame();
-            return;
-        }
-        
-        requestAnimationFrame(() => this.animationLoop());
-    }
-    
+
     // CLIENT-SIDE hit quality calculation
     calculateHitQuality(offsetMs) {
         const absOffset = Math.abs(offsetMs);
@@ -1763,16 +1713,12 @@ class TimingGame {
         document.getElementById('timing-offset').textContent = '';
     }
     
-    stopGame() {
-        this.isPlaying = false;
-        this.endGame();
-    }
-    
     // Send all hits at game end (single network call)
     async endGame() {
         this.isPlaying = false;
-        
-        const duration = Math.floor((performance.now() - this.gameStartTime) / 1000);
+        this.metronome.stop();
+
+        const duration = Math.floor(this.getCurrentGameTime() / 1000);
         
         try {
             const response = await fetch('/timing/complete', {
